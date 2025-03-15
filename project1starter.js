@@ -57,7 +57,7 @@ var g_specPower
 var g_sphereModel
 var g_pyramidModel
 var g_emeraldModel
-var g_terrainModel
+
 // usual model/world matrices
 var g_modelMatrix
 var g_worldMatrix
@@ -66,7 +66,8 @@ var g_worldMatrix
 var g_sphereMesh
 var g_pyramidMesh
 var g_emeraldMesh
-var g_terrainMesh
+
+
 
 
 // Camera projection 
@@ -108,7 +109,6 @@ const FLOAT_SIZE = 4
 const SPHERE_SCALE = 0.1
 const PYRAMID_SCALE = 0.03
 const EMERALD_SCALE = 0.01
-const TERRAIN_SCALE = 0.05
 
 const LIGHT_CUBE_MESH = [
     // front face
@@ -211,27 +211,6 @@ function startRendering() {
         return
     }
 
-    var terrainGenerator = new TerrainGenerator()
-    // use the current milliseconds as our seed by default
-    // TODO: consider setting this as a constant when testing stuff!
-    //   just make sure to change it back to something semi-random before submitting :)
-    var seed = new Date().getMilliseconds()
-
-    var options = { 
-        width: 100, 
-        height: 10, 
-        depth: 100, 
-        seed: seed,
-        noisefn: "wave", 
-        roughness: 20
-    };
-    
-    var terrain = terrainGenerator.generateTerrainMesh(options)
-    var terrainColors = buildTerrainColors(terrain, options.height)
-    g_terrainMesh = []
-    for (var i = 0; i < terrain.length; i++) {
-        g_terrainMesh.push(...terrain[i])
-    }
 
     // initialize the VBO
     var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
@@ -273,6 +252,7 @@ function startRendering() {
     g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
     g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
     g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+    g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
 
     g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
     g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
@@ -288,13 +268,10 @@ function startRendering() {
     g_emeraldModel = new Matrix4()
     g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
 
-    g_terrainModel = new Matrix4()
-    g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
 
     g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
     g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
     g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
-    g_terrainMatrix = new Matrix4().translate(0, -0.7, 0)
 
     // Setup a "reasonable" perspective matrix
     const aspectRatio = g_canvas.width / g_canvas.height;
@@ -510,34 +487,7 @@ function updateCam() {
     )
 }
 
-function buildTerrainColors(terrain, height) {
-    var colors = [];
-    for (var i = 0; i < terrain.length; i++) {
-        // Normalize the height of the vertex (0 = bottom, 1 = top)
-        var normalizedHeight = terrain[i][1] / height;
 
-        // Define the base colors
-        var bottomColor = [0.4, 0.2, 0.0]; // Brown (RGB)
-        var topColor = [1.0, 0.0, 0.0];    // Red (RGB)
-
-        // Interpolate between brown and red based on the normalized height
-        var color = [
-            bottomColor[0] + (topColor[0] - bottomColor[0]) * normalizedHeight, // Red
-            bottomColor[1] + (topColor[1] - bottomColor[1]) * normalizedHeight, // Green
-            bottomColor[2] + (topColor[2] - bottomColor[2]) * normalizedHeight  // Blue
-        ];
-
-        // Add the color to the colors array
-        colors.push(...color);
-    }
-
-    return colors;
-}
-
-// function randomTerrain() {
-//     shouldRandomize = true; // Set a flag to redraw the scene
-//     regenerateTerrain(); // Regenerate the terrain mesh
-// }
 /*
  * Helper function to setup key binding logic
  */
