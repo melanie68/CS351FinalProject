@@ -6,6 +6,9 @@ const VSHADER_SOURCE = `
     uniform mat4 u_World;
     uniform mat4 u_Camera;
     uniform mat4 u_Projection;
+
+    uniform vec3 u_Light;
+
     attribute vec3 a_Color;
     varying vec3 v_Color;
     void main() {
@@ -15,6 +18,12 @@ const VSHADER_SOURCE = `
 `
 
 const FSHADER_SOURCE = `
+    precision highp float;
+
+    uniform vec3 u_Light1;
+    uniform vec3 u_Light2;
+    uniform vec3 u_Light3;
+
     varying mediump vec3 v_Color;
     void main() {
         gl_FragColor = vec4(v_Color, 1.0);
@@ -29,6 +38,20 @@ var g_lastFrameMS
 // GLSL uniform references
 var g_u_model_ref
 var g_u_world_ref
+
+
+// lighting references
+var g_u_inversetranspose_ref
+var g_u_light_ref1
+var g_u_light_ref2
+var g_u_light_ref3
+
+var g_u_specpower_ref
+var g_u_flatlighting_ref
+var g_u_flatcolor_ref
+
+var g_lightPosition1
+var g_specPower
 
 // Models
 var g_sphereModel
@@ -86,6 +109,62 @@ const SPHERE_SCALE = 0.1
 const PYRAMID_SCALE = 0.03
 const EMERALD_SCALE = 0.01
 const TERRAIN_SCALE = 0.05
+
+const LIGHT_CUBE_MESH = [
+    // front face
+    1, 1, 1,
+    -1, 1, 1,
+    -1, -1, 1,
+
+    1, 1, 1,
+    -1, -1, 1,
+    1, -1, 1,
+
+    // back face
+    1, 1, -1,
+    -1, -1, -1,
+    -1, 1, -1,
+
+    1, 1, -1,
+    1, -1, -1,
+    -1, -1, -1,
+
+    // right face
+    1, 1, 1,
+    1, -1, -1,
+    1, 1, -1,
+
+    1, 1, 1,
+    1, -1, 1,
+    1, -1, -1,
+
+    // left face
+    -1, 1, 1,
+    -1, 1, -1,
+    -1, -1, -1,
+
+    -1, 1, 1,
+    -1, -1, -1,
+    -1, -1, 1,
+
+    // top face
+    1, 1, 1,
+    1, 1, -1,
+    -1, 1, -1,
+
+    1, 1, 1,
+    -1, 1, -1,
+    -1, 1, 1,
+
+    // bottom face
+    1, -1, 1,
+    -1, -1, -1,
+    1, -1, -1,
+
+    1, -1, 1,
+    -1, -1, 1,
+    -1, -1, -1,
+]
 
 function main() {
 
@@ -158,14 +237,17 @@ function startRendering() {
     var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
     var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3)
     var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
+    var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
+
     var data = g_sphereMesh
     .concat(g_pyramidMesh)
     .concat(g_emeraldMesh)
-    .concat(g_terrainMesh)
+    .concat(LIGHT_CUBE_MESH)
     .concat(sphereColors)
     .concat(pyramidColors)
     .concat(emeraldColors)
-    .concat(terrainColors)
+    .concat(lightColors)
+    // .concat(terrainColors)
     // g_vbo = initVBO(new Float32Array(data));
     if (!initVBO(new Float32Array(data))) {
        return
@@ -176,7 +258,7 @@ function startRendering() {
         return
     }
     if (!setupVec3('a_Color', 0, 
-        (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + g_terrainMesh.length) 
+        (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) 
         * FLOAT_SIZE)) {
         return -1
     }
@@ -187,6 +269,14 @@ function startRendering() {
     g_u_camera_ref = gl.getUniformLocation(gl.program, 'u_Camera')
     g_u_projection_ref = gl.getUniformLocation(gl.program, 'u_Projection')
 
+    // light references
+    g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
+    g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
+    g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+
+    g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
+    g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
+    g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
 
     // model translation and scaling
     g_sphereModel = new Matrix4()
@@ -199,7 +289,7 @@ function startRendering() {
     g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
 
     g_terrainModel = new Matrix4()
-    g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, TERRAIN_SCALE)
+    g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
 
     g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
     g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
@@ -219,64 +309,15 @@ function startRendering() {
     // Setup for ticks
     g_lastFrameMS = Date.now()
 
+    g_lightPosition1 = [2.5, 0.75, 2]
+    g_lightPosition2 = [2.0, 0.75, 2.5]
+    g_lightPosition3 = [1.75, 0.75, 1.5]
+
+    g_specPower = 16
+
     tick()
 }
-// Not the most efficient but it works!
-function regenerateTerrain() {
-    var terrainGenerator = new TerrainGenerator();
-    var height = Math.random() * 3 + 20;
-    var seed = Math.floor(Math.random() * 100000); // Random seed
-    var roughness = Math.random() * 40 + 20; // Random roughness
-    var options = { 
-        width: 100, 
-        height: height, 
-        depth: 100, 
-        seed: seed,
-        noisefn: "perlin", 
-        roughness: roughness
-    };
 
-    var terrain = terrainGenerator.generateTerrainMesh(options);
-    g_terrainMesh = [];
-    for (var i = 0; i < terrain.length; i++) {
-        g_terrainMesh.push(...terrain[i]);
-    }
-    console.log(g_terrainMesh)
-
-
-    // Regenerate terrain colors
-    var terrainColors = buildTerrainColors(terrain, options.height);
-    var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3);
-    var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3);
-    var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3);
-
-    // Combine all mesh data (sphere, pyramid, emerald, terrain) and their colors
-    var data = g_sphereMesh
-        .concat(g_pyramidMesh)
-        .concat(g_emeraldMesh)
-        .concat(g_terrainMesh)
-        .concat(sphereColors)
-        .concat(pyramidColors)
-        .concat(emeraldColors)
-        .concat(terrainColors);
-
-    // Update the VBO with the new terrain data
-    gl.bindBuffer(gl.ARRAY_BUFFER, g_vbo);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(data));
-
-    var highestPoint = findHighestPoint(g_terrainMesh);
-    const scaledX = highestPoint.x * TERRAIN_SCALE;
-    const scaledY = highestPoint.y * TERRAIN_SCALE;
-    const scaledZ = highestPoint.z * TERRAIN_SCALE;
-    g_emeraldMatrix = new Matrix4().translate(scaledX, scaledY, scaledZ);
-
-    // Redraw the scene
-    draw();
-}
-
-function randomTerrain() {
-    regenerateTerrain(); // Regenerate the terrain mesh
-}
 
 function findHighestPoint(vertices) {
     let highestPoint = -Infinity;
@@ -297,8 +338,6 @@ function findHighestPoint(vertices) {
 
     return highestPosition;
 }
-
-
 
 
 
@@ -353,6 +392,12 @@ function draw() {
     // draw our one model (the teapot)
     gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
+    
+    gl.uniform1i(g_u_flatlighting_ref, false)
+    gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
+    gl.uniform1f(g_u_specpower_ref, g_specPower)
+
+
     gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
@@ -362,15 +407,21 @@ function draw() {
     gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
-    // the grid has a constant identity matrix for model and world
-    // world includes our Y offset
-    gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(0, GRID_Y_OFFSET, 0).elements)
 
-    gl.uniformMatrix4fv(g_u_model_ref, false, g_terrainModel.elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, g_terrainMatrix.elements)
-    // draw the grid
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, g_terrainMesh.length / 3)
+    // light 1
+    gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
+    gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+
+    // light 2
+    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+
+    // light 3
+    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+
 }
 
 function updateRotation()
@@ -387,6 +438,18 @@ function buildColorAttributes(vertex_count) {
         for (var vert = 0; vert < 3; vert++) {
             var shade = (i * 3) / vertex_count
             colors.push(0.8, 0.8, shade)
+        }
+    }
+
+    return colors
+}
+
+function buildLightColorAttributes(vertex_count) {
+    var colors = []
+    for (var i = 0; i < vertex_count / 3; i++) {
+        // three vertices per triangle
+        for (var vert = 0; vert < 3; vert++) {
+            colors.push(1, 1, 1)
         }
     }
 
@@ -471,10 +534,10 @@ function buildTerrainColors(terrain, height) {
     return colors;
 }
 
-function randomTerrain() {
-    shouldRandomize = true; // Set a flag to redraw the scene
-    regenerateTerrain(); // Regenerate the terrain mesh
-}
+// function randomTerrain() {
+//     shouldRandomize = true; // Set a flag to redraw the scene
+//     regenerateTerrain(); // Regenerate the terrain mesh
+// }
 /*
  * Helper function to setup key binding logic
  */
