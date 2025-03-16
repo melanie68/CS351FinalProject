@@ -1,35 +1,5 @@
 // Last edited by Dietrich Geisler 2025
 
-// const VSHADER_SOURCE = `
-//     attribute vec3 a_Position;
-//     uniform mat4 u_Model;
-//     uniform mat4 u_World;
-//     uniform mat4 u_Camera;
-//     uniform mat4 u_Projection;
-
-//     uniform vec3 u_Light;
-
-//     attribute vec3 a_Color;
-//     varying vec3 v_Color;
-//     void main() {
-//         gl_Position = u_Projection * u_Camera * u_World * u_Model * vec4(a_Position, 1.0);
-//         v_Color = a_Color;
-//     }
-// `
-
-// const FSHADER_SOURCE = `
-//     precision highp float;
-
-//     uniform vec3 u_Light1;
-//     uniform vec3 u_Light2;
-//     uniform vec3 u_Light3;
-
-//     varying mediump vec3 v_Color;
-//     void main() {
-//         gl_FragColor = vec4(v_Color, 1.0);
-//     }
-// `
-
 // references to general information
 var g_canvas
 var gl
