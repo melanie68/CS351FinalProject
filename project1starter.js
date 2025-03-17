@@ -89,6 +89,10 @@ var g_vbo;
 var sphereRotateX = false
 var shouldRandomize = false
 
+var redOn = true
+var greenOn = true
+var blueOn = true
+
 // We're using triangles, so our vertices each have 3 elements
 const TRIANGLE_SIZE = 3
 
@@ -448,9 +452,9 @@ function draw() {
     gl.uniform3fv(g_u_light_ref2, new Float32Array(g_lightPosition2))
     gl.uniform3fv(g_u_light_ref3, new Float32Array(g_lightPosition3))
     
-    gl.uniform1i(g_u_redlighting_ref, false)
-    gl.uniform1i(g_u_bluelighting_ref, true)
-    gl.uniform1i(g_u_greenlighting_ref, true)
+    gl.uniform1i(g_u_redlighting_ref, redOn)
+    gl.uniform1i(g_u_bluelighting_ref, blueOn)
+    gl.uniform1i(g_u_greenlighting_ref, greenOn)
 
 
 
@@ -521,6 +525,19 @@ function draw() {
 function updateRotation()
 {
     sphereRotateX = true
+}
+
+function updateRed()
+{
+    redOn = !redOn
+}
+function updateGreen()
+{
+    greenOn = !greenOn
+}
+function updateBlue()
+{
+    blueOn = !blueOn
 }
 
 // Helper to construct colors
