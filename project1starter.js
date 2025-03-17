@@ -67,7 +67,9 @@ var g_sphereMesh
 var g_pyramidMesh
 var g_emeraldMesh
 
-
+var g_sphereNormals
+var g_pyramidNormals
+var g_emeraldNormals
 
 
 // Camera projection 
@@ -193,12 +195,15 @@ async function loadOBJFiles() {
     // open our OBJ file(s)
     data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
     g_sphereMesh = []
-    readObjFile(data, g_sphereMesh)
+    g_sphereNormals = []
+    readObjFile(data, g_sphereMesh, g_sphereNormals)
     data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
     g_pyramidMesh = []
+    g_pyramidNormals = []
     readObjFile(data, g_pyramidMesh)
     data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
     g_emeraldMesh = []
+    g_emeraldNormals = []
     readObjFile(data, g_emeraldMesh)
     // Wait to load our models before starting to render
     startRendering()
@@ -457,6 +462,16 @@ function buildSphereColorAttributes(vertex_count) {
     }
 
     return colors
+}
+
+function getNormals(mesh){
+    var normals = []
+    for (var i = 0; i < mesh.length; i++){
+        for (var vert = 0; vert < 3; vert++) {
+            var shade = 0.5 + (i * 3) / vertex_count * 0.5 
+            colors.push(shade, 0.2, 0.0) // orange gradient
+        }
+    }
 }
 
 function updateCamVec(){
