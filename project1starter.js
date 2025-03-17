@@ -245,8 +245,6 @@ async function loadOBJFiles() {
     g_sphereNormals = []
     readObjFile(data, g_sphereMesh)
     data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
-    // console.log(g_sphereMesh);
-    // console.log(g_sphereNormals);
     g_sphereNormals = getNormals(g_sphereMesh);
     g_pyramidMesh = []
     g_pyramidNormals = []
@@ -278,11 +276,6 @@ function startRendering() {
 
 
     // initialize the VBO
-    var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
-    var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3)
-    var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
-    var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
-
     var data = g_sphereMesh
     .concat(g_pyramidMesh)
     .concat(g_emeraldMesh)
@@ -291,9 +284,7 @@ function startRendering() {
     .concat(g_pyramidNormals)
     .concat(g_emeraldNormals)
     .concat(CUBE_NORMALS)
-    // .concat(lightColors)
-    // .concat(terrainColors)
-    // g_vbo = initVBO(new Float32Array(data));
+
     if (!initVBO(new Float32Array(data))) {
        return
    }
@@ -302,11 +293,6 @@ function startRendering() {
     if (!setupVec3('a_Position', 0, 0)) {
         return
     }
-    // if (!setupVec3('a_Color', 0, 
-    //     (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + g_sphereNormals.length + g_pyramidNormals.length + g_emeraldNormals.length) 
-    //     * FLOAT_SIZE)) {
-    //     return -1
-    // }
 
     if (!setupVec3('a_Normal', 0, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) * FLOAT_SIZE)) {
         return
