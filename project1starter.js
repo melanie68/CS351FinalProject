@@ -17,8 +17,8 @@ var g_u_world_ref
 // lighting references
 var g_u_inversetranspose_ref
 var g_u_light_ref1
-var g_u_light_ref2
-var g_u_light_ref3
+// var g_u_light_ref2
+// var g_u_light_ref3
 
 var g_u_specpower_ref
 var g_u_flatlighting_ref
@@ -44,6 +44,12 @@ var g_emeraldMesh
 var g_sphereNormals
 var g_pyramidNormals
 var g_emeraldNormals
+
+const sphereCOLOR = [1.0, 0, 0];
+const pyramidCOLOR = [1.0, 0.9, 0];
+const emeraldCOLOR = [0.2, 0.7, 0.1];
+const lightCOLOR = [0.3, 0.05, 0.05];
+
 
 // texture coordinates
 var g_pyramidTexture
@@ -144,6 +150,56 @@ const LIGHT_CUBE_MESH = [
     -1, -1, -1,
 ]
 
+const CUBE_NORMALS = [
+    // front face
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+
+    // back face
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+
+    // right face
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+
+    // left face
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+
+    // top face
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+
+    // bottom face
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+]
+
 function main() {
 
 
@@ -174,15 +230,20 @@ async function loadOBJFiles() {
     data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
     g_sphereMesh = []
     g_sphereNormals = []
-    readObjFile(data, g_sphereMesh, g_sphereNormals)
+    readObjFile(data, g_sphereMesh)
     data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
+    // console.log(g_sphereMesh);
+    // console.log(g_sphereNormals);
+    g_sphereNormals = getNormals(g_sphereMesh);
     g_pyramidMesh = []
     g_pyramidNormals = []
-    readObjFile(data, g_pyramidMesh)
+    readObjFile(data, g_pyramidMesh, g_pyramidNormals)
+    g_pyramidNormals = getNormals(g_pyramidMesh);
     data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
     g_emeraldMesh = []
     g_emeraldNormals = []
-    readObjFile(data, g_emeraldMesh)
+    readObjFile(data, g_emeraldMesh, g_emeraldNormals)
+    g_emeraldNormals = getNormals(g_emeraldMesh);
     // Wait to load our models before starting to render
     loadGLSLFiles()
 }
@@ -213,10 +274,11 @@ function startRendering() {
     .concat(g_pyramidMesh)
     .concat(g_emeraldMesh)
     .concat(LIGHT_CUBE_MESH)
-    .concat(sphereColors)
-    .concat(pyramidColors)
-    .concat(emeraldColors)
-    .concat(lightColors)
+    .concat(g_sphereNormals)
+    .concat(g_pyramidNormals)
+    .concat(g_emeraldNormals)
+    .concat(CUBE_NORMALS)
+    // .concat(lightColors)
     // .concat(terrainColors)
     // g_vbo = initVBO(new Float32Array(data));
     if (!initVBO(new Float32Array(data))) {
@@ -227,10 +289,14 @@ function startRendering() {
     if (!setupVec3('a_Position', 0, 0)) {
         return
     }
-    if (!setupVec3('a_Color', 0, 
-        (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) 
-        * FLOAT_SIZE)) {
-        return -1
+    // if (!setupVec3('a_Color', 0, 
+    //     (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + g_sphereNormals.length + g_pyramidNormals.length + g_emeraldNormals.length) 
+    //     * FLOAT_SIZE)) {
+    //     return -1
+    // }
+
+    if (!setupVec3('a_Normal', 0, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) * FLOAT_SIZE)) {
+        return
     }
 
     // Get references to GLSL uniforms
@@ -242,12 +308,14 @@ function startRendering() {
     // light references
     g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
     g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
-    g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
-    g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
+    // g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+    // g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
 
     g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
     g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
     g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
+    g_u_diffuse_ref = gl.getUniformLocation(gl.program, 'u_DiffuseColor')
+
 
     // model translation and scaling
     g_sphereModel = new Matrix4()
@@ -278,10 +346,10 @@ function startRendering() {
     g_lastFrameMS = Date.now()
 
     g_lightPosition1 = [2.5, 0.75, 2]
-    g_lightPosition2 = [2.0, 0.75, 2.5]
-    g_lightPosition3 = [1.75, 0.75, 1.5]
+    // g_lightPosition2 = [2.0, 0.75, 2.5]
+    // g_lightPosition3 = [1.75, 0.75, 1.5]
 
-    g_specPower = 16
+    g_specPower = 5
 
     tick()
 }
@@ -360,35 +428,61 @@ function draw() {
     // draw our one model (the teapot)
     gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
+
+    var inverseTranspose = new Matrix4(g_sphereMatrix).multiply(g_sphereModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+
     
     gl.uniform1i(g_u_flatlighting_ref, false)
     gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
     gl.uniform1f(g_u_specpower_ref, g_specPower)
+
+    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(sphereCOLOR))
 
 
     gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
+    var inverseTranspose = new Matrix4(g_pyramidMatrix).multiply(g_pyramidModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(pyramidCOLOR))
+
     gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
+    var inverseTranspose = new Matrix4(g_emeraldMatrix).multiply(g_emeraldModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(emeraldCOLOR))
+
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
 
     // light 1
-    gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
-    gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
+    gl.uniform1i(g_u_flatlighting_ref, true)
+
+    gl.uniform3fv(g_u_flatcolor_ref, [0.84, 0.58, 0.76])
+    let g_lightModel = new Matrix4().scale(.05, .05, .05);
+    let g_lightMatrix = new Matrix4().translate(...g_lightPosition1);
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_lightModel.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_lightMatrix.elements)
+    var inverseTranspose = new Matrix4(g_lightMatrix.elements).multiply(g_lightModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(lightCOLOR))
+
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
-    // light 2
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    // // light 2
+    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
+    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
-    // light 3
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    // // light 3
+    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
+    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
 }
 
@@ -450,15 +544,35 @@ function buildSphereColorAttributes(vertex_count) {
     return colors
 }
 
-function getNormals(mesh){
-    var normals = []
-    for (var i = 0; i < mesh.length; i++){
-        for (var vert = 0; vert < 3; vert++) {
-            var shade = 0.5 + (i * 3) / vertex_count * 0.5 
-            colors.push(shade, 0.2, 0.0) // orange gradient
-        }
+function getNormals(cubeMesh) {
+    const normals = [];
+        for (let i = 0; i < cubeMesh.length; i += 9) {
+            const v1 = [cubeMesh[i], cubeMesh[i + 1], cubeMesh[i + 2]];
+            const v2 = [cubeMesh[i + 3], cubeMesh[i + 4], cubeMesh[i + 5]];
+            const v3 = [cubeMesh[i + 6], cubeMesh[i + 7], cubeMesh[i + 8]];
+  
+            const A = [v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]];
+            const B = [v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2]];
+  
+            let normalX = A[1] * B[2] - A[2] * B[1];
+            let normalY = A[2] * B[0] - A[0] * B[2];
+            let normalZ = A[0] * B[1] - A[1] * B[0];
+  
+            const len = Math.hypot(normalX, normalY, normalZ);
+            if (len > 0.00001) {
+                normalX /= len;
+                normalY /= len;
+                normalZ /= len;
+            }
+
+            normals.push(normalX, normalY, normalZ);
+            normals.push(normalX, normalY, normalZ);
+            normals.push(normalX, normalY, normalZ);
     }
-}
+  
+    return normals;
+  }
+  
 
 function updateCamVec(){
     g_lookX = Math.cos(g_yawA) * Math.cos(g_pitchA)
