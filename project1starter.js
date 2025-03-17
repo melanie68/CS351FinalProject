@@ -27,6 +27,9 @@ var g_u_flatcolor_ref
 var g_lightPosition1
 var g_specPower
 
+var g_u_texture_ref
+var g_texturePointer
+
 // Models
 var g_sphereModel
 var g_pyramidModel
@@ -43,7 +46,10 @@ var g_emeraldMesh
 var g_terrainMesh
 
 // texture coordinates
-var g_pyramidTexture
+var g_pyramidTextureCoord
+
+// images for texture
+var g_pyramidImage
 
 // Camera projection 
 var g_u_camera_ref
@@ -82,7 +88,7 @@ const TRIANGLE_SIZE = 3
 const FLOAT_SIZE = 4
 
 const SPHERE_SCALE = 0.1
-const PYRAMID_SCALE = 0.03
+const PYRAMID_SCALE = 0.09
 const EMERALD_SCALE = 0.01
 const TERRAIN_SCALE = 0.05
 
@@ -157,7 +163,7 @@ function main() {
     }
 
     // We will call this at the end of most main functions from now on
-    loadOBJFiles()
+    loadImageFiles()
 }
 
 /*
@@ -165,7 +171,21 @@ function main() {
  * For much larger files, you may are welcome to make this more parallel
  * I made everything sequential for this class to make the logic easier to follow
  */
+function splitData(data) {
+    let lines = data.split('\n');
+    let textures = [];
 
+    for (let line of lines) {
+        line = line.trim();
+        
+        if (line.startsWith('vt ')) {  // Texture coordinates
+            let parts = line.split(' ').slice(1);
+            textures.push(parts.map(parseFloat)); // Add the texture coordinate as an array of floats
+        }
+    }
+
+    return textures;
+}
 
 async function loadOBJFiles() {
     // open our OBJ file(s)
@@ -175,11 +195,19 @@ async function loadOBJFiles() {
     data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
     g_pyramidMesh = []
     readObjFile(data, g_pyramidMesh)
+    g_pyramidTextureCoord = splitData(data)
+    console.log(g_pyramidTextureCoord)
     data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
     g_emeraldMesh = []
     readObjFile(data, g_emeraldMesh)
     // Wait to load our models before starting to render
     loadGLSLFiles()
+}
+async function loadImageFiles() {
+    g_pyramidImage = new Image()
+    g_pyramidImage.src = "resources/brick_resized.png"
+    await g_pyramidImage.decode()
+    loadOBJFiles()
 }
 
 async function loadGLSLFiles() {
@@ -197,42 +225,44 @@ function startRendering() {
         return
     }
 
-    var terrainGenerator = new TerrainGenerator()
-    // use the current milliseconds as our seed by default
-    // TODO: consider setting this as a constant when testing stuff!
-    //   just make sure to change it back to something semi-random before submitting :)
-    var seed = new Date().getMilliseconds()
+    // var terrainGenerator = new TerrainGenerator()
+    // // use the current milliseconds as our seed by default
+    // // TODO: consider setting this as a constant when testing stuff!
+    // //   just make sure to change it back to something semi-random before submitting :)
+    // var seed = new Date().getMilliseconds()
 
-    var options = { 
-        width: 100, 
-        height: 10, 
-        depth: 100, 
-        seed: seed,
-        noisefn: "wave", 
-        roughness: 20
-    };
+    // var options = { 
+    //     width: 100, 
+    //     height: 10, 
+    //     depth: 100, 
+    //     seed: seed,
+    //     noisefn: "wave", 
+    //     roughness: 20
+    // };
     
-    var terrain = terrainGenerator.generateTerrainMesh(options)
-    var terrainColors = buildTerrainColors(terrain, options.height)
-    g_terrainMesh = []
-    for (var i = 0; i < terrain.length; i++) {
-        g_terrainMesh.push(...terrain[i])
-    }
+    // var terrain = terrainGenerator.generateTerrainMesh(options)
+    // var terrainColors = buildTerrainColors(terrain, options.height)
+    // g_terrainMesh = []
+    // for (var i = 0; i < terrain.length; i++) {
+    //     g_terrainMesh.push(...terrain[i])
+    // }
 
     // initialize the VBO
-    var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
+    // var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
     var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3)
-    var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
-    var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
+    // var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
+    // var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
 
-    var data = g_sphereMesh
-    .concat(g_pyramidMesh)
-    .concat(g_emeraldMesh)
-    .concat(LIGHT_CUBE_MESH)
-    .concat(sphereColors)
-    .concat(pyramidColors)
-    .concat(emeraldColors)
-    .concat(lightColors)
+    // var data = g_sphereMesh
+    // .concat(g_pyramidMesh)
+    // .concat(g_emeraldMesh)
+    // .concat(LIGHT_CUBE_MESH)
+    // .concat(sphereColors)
+    // .concat(pyramidColors)
+    // .concat(emeraldColors)
+    // .concat(lightColors)
+    var data = g_pyramidMesh.concat(g_pyramidTextureCoord)
+
     // .concat(terrainColors)
     // g_vbo = initVBO(new Float32Array(data));
     if (!initVBO(new Float32Array(data))) {
@@ -240,47 +270,64 @@ function startRendering() {
    }
 
     // Send our vertex data to the GPU
-    if (!setupVec3('a_Position', 0, 0)) {
+    if (!setupVec(3, 'a_Position', 0, 0)) {
         return
     }
-    if (!setupVec3('a_Color', 0, 
-        (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) 
-        * FLOAT_SIZE)) {
-        return -1
+
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * g_pyramidMesh.length)) {
+        return
     }
+    // if (!setupVec3('a_Color', 0, 
+    //     (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) 
+    //     * FLOAT_SIZE)) {
+    //     return -1
+    // }
 
     // Get references to GLSL uniforms
     g_u_model_ref = gl.getUniformLocation(gl.program, 'u_Model')
     g_u_world_ref = gl.getUniformLocation(gl.program, 'u_World')
     g_u_camera_ref = gl.getUniformLocation(gl.program, 'u_Camera')
     g_u_projection_ref = gl.getUniformLocation(gl.program, 'u_Projection')
+    g_u_texture_ref = gl.getUniformLocation(gl.program, 'u_Texture')
 
     // light references
-    g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
-    g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
-    g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+    // g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
+    // g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
+    // g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
 
-    g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
-    g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
-    g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
+    // g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
+    // g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
+    // g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
 
     // model translation and scaling
-    g_sphereModel = new Matrix4()
-    g_sphereModel = g_sphereModel.scale(SPHERE_SCALE, SPHERE_SCALE, -SPHERE_SCALE) // -z to make the plane not be "inside-out"
+    // g_sphereModel = new Matrix4()
+    // g_sphereModel = g_sphereModel.scale(SPHERE_SCALE, SPHERE_SCALE, -SPHERE_SCALE) // -z to make the plane not be "inside-out"
 
     g_pyramidModel = new Matrix4()
     g_pyramidModel = g_pyramidModel.scale(PYRAMID_SCALE, PYRAMID_SCALE, -PYRAMID_SCALE)
 
-    g_emeraldModel = new Matrix4()
-    g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
+    // g_emeraldModel = new Matrix4()
+    // g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
 
-    g_terrainModel = new Matrix4()
-    g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
+    // g_terrainModel = new Matrix4()
+    // g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
 
-    g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
+    // g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
     g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
-    g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
-    g_terrainMatrix = new Matrix4().translate(0, -0.7, 0)
+    // g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
+    // g_terrainMatrix = new Matrix4().translate(0, -0.7, 0)
+
+    var g_texturePointer = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, g_texturePointer)
+
+    gl.uniform1i(g_u_texture_ref, g_texturePointer)
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, g_pyramidImage)
+
+    gl.generateMipmap(gl.TEXTURE_2D)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR)
 
     // Setup a "reasonable" perspective matrix
     const aspectRatio = g_canvas.width / g_canvas.height;
@@ -295,36 +342,14 @@ function startRendering() {
     // Setup for ticks
     g_lastFrameMS = Date.now()
 
-    g_lightPosition1 = [2.5, 0.75, 2]
-    g_lightPosition2 = [2.0, 0.75, 2.5]
-    g_lightPosition3 = [1.75, 0.75, 1.5]
+    // g_lightPosition1 = [2.5, 0.75, 2]
+    // g_lightPosition2 = [2.0, 0.75, 2.5]
+    // g_lightPosition3 = [1.75, 0.75, 1.5]
 
-    g_specPower = 16
+    // g_specPower = 16
 
     tick()
 }
-
-
-function findHighestPoint(vertices) {
-    let highestPoint = -Infinity;
-    let highestPosition = { x: 0, y: 0, z: 0 };
-
-    // Loop through the vertices (x, y, z) and find the maximum y-value
-    for (let i = 0; i < vertices.length; i += 3) {
-        let x = vertices[i];     // x value
-        let y = vertices[i + 1]; // y value (height)
-        let z = vertices[i + 2]; // z value
-
-        // Check if this y value is higher than the current highest
-        if (y > highestPoint) {
-            highestPoint = y;
-            highestPosition = { x: x, y: y, z: z };
-        }
-    }
-
-    return highestPosition;
-}
-
 
 
 // extra constants for cleanliness
@@ -345,15 +370,15 @@ function tick() {
     g_lastFrameMS = current_time
 
     // rotate the arm constantly around the given axis (of the model)
-    angle = SPHERE_ROTATION_SPEED * deltaTime
+    // angle = SPHERE_ROTATION_SPEED * deltaTime
 
     // rotation matrices
-    if (sphereRotateX) // only rotate sphere when true 
-    {
-        g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
-    }
+    // if (sphereRotateX) // only rotate sphere when true 
+    // {
+    //     g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
+    // }
     g_pyramidMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
-    g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
+    // g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
     
     updateCam()
 
@@ -376,37 +401,38 @@ function draw() {
     gl.uniformMatrix4fv(g_u_camera_ref, false, g_viewMatrix.elements);
     gl.uniformMatrix4fv(g_u_projection_ref, false, g_projectionMatrix.elements)
     // draw our one model (the teapot)
-    gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
+    // gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
+    // gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
     
-    gl.uniform1i(g_u_flatlighting_ref, false)
-    gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
-    gl.uniform1f(g_u_specpower_ref, g_specPower)
+    // gl.uniform1i(g_u_flatlighting_ref, false)
+    // gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
+    // gl.uniform1f(g_u_specpower_ref, g_specPower)
 
 
-    gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
+    // gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
-    gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
+    // gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
+    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
 
-    gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
+    // gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
+    // gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
+    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
 
     // light 1
-    gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
-    gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    // gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
+    // gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
+    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
+    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
-    // light 2
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    // // light 2
+    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
+    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
-    // light 3
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    // // light 3
+    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
+    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
 }
 
@@ -624,7 +650,7 @@ function initVBO(data) {
  * Helper function to load the given vec3 data chunk onto the VBO
  * Requires that the VBO already be setup and assigned to the GPU
  */
-function setupVec3(name, stride, offset) {
+function setupVec(size, name, stride, offset) {
     // Get the attribute by name
     var attributeID = gl.getAttribLocation(gl.program, `${name}`)
     if (attributeID < 0) {
@@ -633,7 +659,7 @@ function setupVec3(name, stride, offset) {
     }
 
     // Set how the GPU fills the a_Position variable with data from the GPU 
-    gl.vertexAttribPointer(attributeID, 3, gl.FLOAT, false, stride, offset)
+    gl.vertexAttribPointer(attributeID, size, gl.FLOAT, false, stride, offset)
     gl.enableVertexAttribArray(attributeID)
 
     return true
