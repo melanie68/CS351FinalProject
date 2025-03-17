@@ -50,9 +50,12 @@
         <input type = "button" id="switch_green" onclick="updateGreen()" value="Green">
         <input type = "button" id="switch_blue" onclick="updateBlue()" value="Blue">
     </div>
-    <div>
-        <p>Click here to change the terrain</p>
-        <!-- <input type = "button" id="randomTerrain" onclick="randomTerrain()" value="Randomize" > -->
+    <div> 
+        <p>
+            Slide to move the red light!
+        </p>
+        <input type="range" id="slider1Y" min="-1" max="1" step=".01" value="0"/>
+        <label id="light1Y" for="slider1Y"></label>
     </div>
 </body>
 

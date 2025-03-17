@@ -214,6 +214,10 @@ function main() {
 
     setupKeyBinds()
 
+    slider_input = document.getElementById('slider1Y')
+    slider_input.addEventListener('input', (event) => {
+        updateLight1Y(event.target.value)
+    })
     g_canvas = document.getElementById('canvas')
 
     // Get the rendering context for WebGL
@@ -363,6 +367,8 @@ function startRendering() {
     g_lightPosition3 = [1.75, 0.75, 1.5]
 
     g_specPower = 5
+
+    updateLight1Y(0.75)
 
     tick()
 }
@@ -649,6 +655,12 @@ function updateCam() {
         g_camPosX + g_lookX, g_camPosY + g_lookY, g_camPosZ + g_lookZ,
         g_upX, g_upY, g_upZ
     )
+}
+
+function updateLight1Y(amount) {
+    label = document.getElementById('light1Y')
+    label.textContent = `Red Light Y: ${Number(amount).toFixed(2)}`
+    g_lightPosition1[1] = Number(amount)
 }
 
 

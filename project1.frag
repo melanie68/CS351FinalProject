@@ -43,7 +43,7 @@ void main() {
         vec3 color2 = dot(normalize(u_Light2), rotated) * lightColor2;
         vec3 color3 = dot(normalize(u_Light3), rotated) * lightColor3;
 
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
 
         if (u_REDLighting){
             gl_FragColor += vec4(color1, 1.0);
