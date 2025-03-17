@@ -17,12 +17,17 @@ var g_u_world_ref
 // lighting references
 var g_u_inversetranspose_ref
 var g_u_light_ref1
-// var g_u_light_ref2
-// var g_u_light_ref3
+var g_u_light_ref2
+var g_u_light_ref3
 
 var g_u_specpower_ref
 var g_u_flatlighting_ref
 var g_u_flatcolor_ref
+
+var g_u_redlighting_ref
+var g_u_bluelighting_ref
+var g_u_greenlighting_ref
+
 
 var g_lightPosition1
 var g_specPower
@@ -48,7 +53,7 @@ var g_emeraldNormals
 const sphereCOLOR = [1.0, 0, 0];
 const pyramidCOLOR = [1.0, 0.9, 0];
 const emeraldCOLOR = [0.2, 0.7, 0.1];
-const lightCOLOR = [0.3, 0.05, 0.05];
+const lightCOLOR = [1.0, 1.00, 1.00];
 
 
 // texture coordinates
@@ -76,7 +81,7 @@ var g_upY = 1.0;
 var g_upZ = 0.0;
 
 let g_camPosX = 0.0;
-let g_camPosY = 0.1;
+let g_camPosY = 0.3;
 let g_camPosZ = 2.0; // Positioned 5 units away from origin
 var g_vbo;
 
@@ -308,13 +313,17 @@ function startRendering() {
     // light references
     g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
     g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
-    // g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
-    // g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
+    g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+    g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
 
     g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
     g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
     g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
     g_u_diffuse_ref = gl.getUniformLocation(gl.program, 'u_DiffuseColor')
+    g_u_redlighting_ref = gl.getUniformLocation(gl.program, 'u_REDLighting')
+    g_u_bluelighting_ref = gl.getUniformLocation(gl.program, 'u_BLUELighting')
+    g_u_greenlighting_ref = gl.getUniformLocation(gl.program, 'u_GREENLighting')
+
 
 
     // model translation and scaling
@@ -346,8 +355,8 @@ function startRendering() {
     g_lastFrameMS = Date.now()
 
     g_lightPosition1 = [2.5, 0.75, 2]
-    // g_lightPosition2 = [2.0, 0.75, 2.5]
-    // g_lightPosition3 = [1.75, 0.75, 1.5]
+    g_lightPosition2 = [2.0, 0.75, 2.5]
+    g_lightPosition3 = [1.75, 0.75, 1.5]
 
     g_specPower = 5
 
@@ -436,6 +445,15 @@ function draw() {
     
     gl.uniform1i(g_u_flatlighting_ref, false)
     gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
+    gl.uniform3fv(g_u_light_ref2, new Float32Array(g_lightPosition2))
+    gl.uniform3fv(g_u_light_ref3, new Float32Array(g_lightPosition3))
+    
+    gl.uniform1i(g_u_redlighting_ref, false)
+    gl.uniform1i(g_u_bluelighting_ref, true)
+    gl.uniform1i(g_u_greenlighting_ref, true)
+
+
+
     gl.uniform1f(g_u_specpower_ref, g_specPower)
 
     gl.uniform3fv(g_u_diffuse_ref, new Float32Array(sphereCOLOR))
@@ -464,7 +482,7 @@ function draw() {
     // light 1
     gl.uniform1i(g_u_flatlighting_ref, true)
 
-    gl.uniform3fv(g_u_flatcolor_ref, [0.84, 0.58, 0.76])
+    gl.uniform3fv(g_u_flatcolor_ref, [1, 0, 0])
     let g_lightModel = new Matrix4().scale(.05, .05, .05);
     let g_lightMatrix = new Matrix4().translate(...g_lightPosition1);
     gl.uniformMatrix4fv(g_u_model_ref, false, g_lightModel.elements)
@@ -477,12 +495,26 @@ function draw() {
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
     // // light 2
-    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
-    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    gl.uniform3fv(g_u_flatcolor_ref, [0, 0, 1])
+    let g_lightMatrix2 = new Matrix4().translate(...g_lightPosition2);
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_lightMatrix2.elements)
+    
+    var inverseTranspose = new Matrix4(g_lightMatrix2.elements).multiply(g_lightModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
     // // light 3
-    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
-    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    gl.uniform3fv(g_u_flatcolor_ref, [0, 1, 0])
+    let g_lightMatrix3 = new Matrix4().translate(...g_lightPosition3);
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_lightMatrix3.elements)
+    
+    var inverseTranspose = new Matrix4(g_lightMatrix3.elements).multiply(g_lightModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
 }
 
