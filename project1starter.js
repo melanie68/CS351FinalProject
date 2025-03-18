@@ -355,6 +355,11 @@ function startRendering() {
     var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
     var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
 
+    var sphereTypes = new Array(g_sphereMesh.length / 3).fill(2);  // 2 for sphere
+    var emeraldTypes = new Array(g_emeraldMesh.length / 3).fill(1);  // 1 for emerald
+    var pyramidTypes = new Array(PLATFORM_MESH.length / 3).fill(0);  // 0 for pyramid (texture)
+
+
     var data = PLATFORM_MESH
     .concat(g_sphereMesh)
     .concat(g_emeraldMesh)
@@ -363,6 +368,11 @@ function startRendering() {
     .concat(sphereColors)
     .concat(emeraldColors)
     .concat(lightColors)
+    .concat(sphereTypes)
+    .concat(emeraldTypes)
+    .concat(pyramidTypes);  // Add object types for each mesh
+
+
     // var data =  PLATFORM_MESH.concat(PLATFORM_TEX_MAPPING)
     // console.log(data)
     // .concat(terrainColors)
@@ -376,13 +386,16 @@ function startRendering() {
     }
 
     // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
-    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * PLATFORM_MESH.length)) {
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
         return; // Exit if texture coordinates setup fails
     }
 
     // Set up color data for the sphere, emerald, and light cube meshes
-    if (!setupVec3(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) * FLOAT_SIZE)) {
+    if (!setupVec(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
         return; // Exit if color setup fails
+    }
+    if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length+ emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
+        return;
     }
 
     // Get references to GLSL uniforms
@@ -523,15 +536,15 @@ function draw() {
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel2.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix2.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length.length / 3)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel3.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix3.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.lengthh.length / 3)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel4.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix4.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length.length / 3);
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3);
 
      // draw the sphere 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)

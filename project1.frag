@@ -3,12 +3,16 @@ precision highp float;
 
 uniform sampler2D u_Texture;
 varying vec2 v_TexCoord;
+varying vec3 v_Color;         // Color for sphere and emerald
 varying vec3 v_Normal;
+varying float v_ObjectType;   // Object type to distinguish objects
 
 void main() {
-    // Sample the texture using the texture coordinates passed from the vertex shader
-    // vec4 textureColor = texture2D(u_Texture, v_TexCoord);
-
-    // Set the final color of the fragment
-    gl_FragColor =  texture2D(u_Texture, v_TexCoord);
+    if (v_ObjectType == 0.0) {
+        // Pyramid: Use texture
+        gl_FragColor = texture2D(u_Texture, v_TexCoord);
+    } else {
+        // Sphere or Emerald: Use color
+        gl_FragColor = vec4(v_Color, 1.0);
+    }
 }
