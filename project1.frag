@@ -1,6 +1,26 @@
 // Fragment Shader
 precision highp float;
 
+uniform mat4 u_Model;
+uniform mat4 u_Camera;
+varying vec3 v_Position;
+uniform mat4 u_World;
+
+uniform vec3 u_Light1;
+uniform vec3 u_Light2;
+uniform vec3 u_Light3;
+
+uniform float u_SpecPower;
+
+uniform bool u_FlatLighting;
+uniform vec3 u_FlatColor;
+
+uniform vec3 u_DiffuseColor;
+
+uniform bool u_REDLighting;
+uniform bool u_GREENLighting;
+uniform bool u_BLUELighting;
+
 uniform sampler2D u_Texture;
 varying vec2 v_TexCoord;
 varying vec3 v_Color;         // Color for sphere and emerald

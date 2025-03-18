@@ -20,6 +20,10 @@ var g_u_light_ref1
 var g_u_light_ref2
 var g_u_light_ref3
 
+var g_u_redlighting_ref
+var g_u_bluelighting_ref
+var g_u_greenlighting_ref
+
 var g_u_specpower_ref
 var g_u_flatlighting_ref
 var g_u_flatcolor_ref
@@ -55,9 +59,16 @@ var g_worldMatrix
 
 // Mesh definitions
 var g_sphereMesh
-var g_pyramidMesh
 var g_emeraldMesh
-var g_terrainMesh
+
+var g_sphereNormals
+var g_emeraldNormals
+
+const sphereCOLOR = [1.0, 0, 0];
+const pyramidCOLOR = [1.0, 0.9, 0];
+const emeraldCOLOR = [0.2, 0.7, 0.1];
+const lightCOLOR = [1.0, 1.00, 1.00];
+
 
 // texture coordinates
 var g_pyramidTextureCoord
@@ -87,13 +98,17 @@ var g_upY = 1.0;
 var g_upZ = 0.0;
 
 let g_camPosX = 0.0;
-let g_camPosY = 0.1;
+let g_camPosY = 0.3;
 let g_camPosZ = 2.0; // Positioned 5 units away from origin
 var g_vbo;
 
 // boolean states 
 var sphereRotateX = false
 var shouldRandomize = false
+
+var redOn = true
+var greenOn = true
+var blueOn = true
 
 // We're using triangles, so our vertices each have 3 elements
 const TRIANGLE_SIZE = 3
@@ -161,6 +176,108 @@ const LIGHT_CUBE_MESH = [
     -1, -1, 1,
     -1, -1, -1,
 ]
+
+const CUBE_NORMALS = [
+    // front face
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+
+    // back face
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+
+    // right face
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+
+    // left face
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+
+    // top face
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+
+    // bottom face
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+]
+
+// same as cube normals 
+const PLATFORM_NORMALS = [
+    // front face
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+
+    // back face
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+
+    // right face
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+
+    // left face
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+
+    // top face
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+
+    // bottom face
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+]
+
 
 const PLATFORM_MESH = [
     // front face
@@ -275,6 +392,10 @@ function main() {
 
 
     setupKeyBinds()
+    slider_input = document.getElementById('slider1Y')
+    slider_input.addEventListener('input', (event) => {
+        updateLight1Y(event.target.value)
+    })
 
     g_canvas = document.getElementById('canvas')
 
@@ -298,11 +419,14 @@ async function loadOBJFiles() {
     // open our OBJ file(s)
     data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
     g_sphereMesh = []
+    g_sphereNormals = []
     readObjFile(data, g_sphereMesh)
-    
+    g_sphereNormals = getNormals(g_sphereMesh)
     data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
     g_emeraldMesh = []
+    g_emeraldNormals = []
     readObjFile(data, g_emeraldMesh)
+    g_emeraldNormals = getNormals(g_emeraldMesh);
 
     loadGLSLFiles()
 }
@@ -327,28 +451,6 @@ function startRendering() {
         console.log('Failed to intialize shaders.')
         return
     }
-
-    // var terrainGenerator = new TerrainGenerator()
-    // // use the current milliseconds as our seed by default
-    // // TODO: consider setting this as a constant when testing stuff!
-    // //   just make sure to change it back to something semi-random before submitting :)
-    // var seed = new Date().getMilliseconds()
-
-    // var options = { 
-    //     width: 100, 
-    //     height: 10, 
-    //     depth: 100, 
-    //     seed: seed,
-    //     noisefn: "wave", 
-    //     roughness: 20
-    // };
-    
-    // var terrain = terrainGenerator.generateTerrainMesh(options)
-    // var terrainColors = buildTerrainColors(terrain, options.height)
-    // g_terrainMesh = []
-    // for (var i = 0; i < terrain.length; i++) {
-    //     g_terrainMesh.push(...terrain[i])
-    // }
 
     // initialize the VBO
     var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
@@ -384,16 +486,17 @@ function startRendering() {
    if (!setupVec(3, 'a_Position', 0, 0)) {
     return; // Exit if position setup fails
     }
-
+    console.log("TextCoordinates:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
     // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
-    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
         return; // Exit if texture coordinates setup fails
     }
-
+    console.log("Color:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length)
     // Set up color data for the sphere, emerald, and light cube meshes
-    if (!setupVec(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
+    if (!setupVec(3, 'a_Color', 0, (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
         return; // Exit if color setup fails
     }
+    console.log("Object:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length+ emeraldColors.length + lightColors.length)
     if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length+ emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
         return;
     }
@@ -409,10 +512,15 @@ function startRendering() {
     g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
     g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
     g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+    g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
 
     g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
     g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
     g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
+    g_u_diffuse_ref = gl.getUniformLocation(gl.program, 'u_DiffuseColor')
+    g_u_redlighting_ref = gl.getUniformLocation(gl.program, 'u_REDLighting')
+    g_u_bluelighting_ref = gl.getUniformLocation(gl.program, 'u_BLUELighting')
+    g_u_greenlighting_ref = gl.getUniformLocation(gl.program, 'u_GREENLighting')
 
     // model translation and scaling
     g_sphereModel = new Matrix4()
@@ -420,9 +528,6 @@ function startRendering() {
 
     g_emeraldModel = new Matrix4()
     g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
-
-    // g_terrainModel = new Matrix4()
-    // g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
 
     g_platformModel1 = new Matrix4().scale(PYRAMID_SCALE, 0.08, PYRAMID_SCALE)
     g_platformModel2 = new Matrix4().scale(0.4, 0.08, 0.3)
@@ -436,8 +541,7 @@ function startRendering() {
 
 
     g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
-    g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
-    // g_terrainMatrix = new Matrix4().translate(0, -0.7, 0)
+    g_emeraldMatrix = new Matrix4().translate(2, 0.65, 2)
 
     var g_texturePointer = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, g_texturePointer)
@@ -471,6 +575,8 @@ function startRendering() {
 
 
     g_specPower = 16
+
+    updateLight1Y(0.75)
 
     tick()
 }
@@ -549,30 +655,62 @@ function draw() {
      // draw the sphere 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
-    gl.drawArrays(gl.TRIANGLES, (PLATFORM_MESH.length) / 3, g_sphereMesh.length / 3)
-    
-    // ligting
+    var inverseTranspose = new Matrix4(g_sphereMatrix).multiply(g_sphereModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+
     gl.uniform1i(g_u_flatlighting_ref, false)
     gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
+    gl.uniform3fv(g_u_light_ref2, new Float32Array(g_lightPosition2))
+    gl.uniform3fv(g_u_light_ref3, new Float32Array(g_lightPosition3))
+    
+    gl.uniform1i(g_u_redlighting_ref, redOn)
+    gl.uniform1i(g_u_bluelighting_ref, blueOn)
+    gl.uniform1i(g_u_greenlighting_ref, greenOn)
+
     gl.uniform1f(g_u_specpower_ref, g_specPower)
 
+    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(sphereCOLOR))
+
+    gl.drawArrays(gl.TRIANGLES, (PLATFORM_MESH.length) / 3, g_sphereMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length) / 3, g_emeraldMesh.length / 3)
 
     // light 1
-    gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
-    gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
+    gl.uniform3fv(g_u_flatcolor_ref, [1, 0, 0])
+    let g_lightModel = new Matrix4().scale(.05, .05, .05);
+    let g_lightMatrix = new Matrix4().translate(...g_lightPosition1);
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_lightModel.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_lightMatrix.elements)
+    var inverseTranspose = new Matrix4(g_lightMatrix.elements).multiply(g_lightModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(lightCOLOR))
+
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
-    // light 2
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
+    // // light 2
+    gl.uniform3fv(g_u_flatcolor_ref, [0, 0, 1])
+    let g_lightMatrix2 = new Matrix4().translate(...g_lightPosition2);
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_lightMatrix2.elements)
+    
+    var inverseTranspose = new Matrix4(g_lightMatrix2.elements).multiply(g_lightModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
-    // light 3
-    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
+    // // light 3
+    gl.uniform3fv(g_u_flatcolor_ref, [0, 1, 0])
+    let g_lightMatrix3 = new Matrix4().translate(...g_lightPosition3);
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_lightMatrix3.elements)
+    
+    var inverseTranspose = new Matrix4(g_lightMatrix3.elements).multiply(g_lightModel)
+    inverseTranspose.invert().transpose()
+    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
+
     gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
 
@@ -581,6 +719,18 @@ function draw() {
 function updateRotation()
 {
     sphereRotateX = true
+}
+function updateRed()
+{
+    redOn = !redOn
+}
+function updateGreen()
+{
+    greenOn = !greenOn
+}
+function updateBlue()
+{
+    blueOn = !blueOn
 }
 
 // Helper to construct colors
@@ -636,6 +786,36 @@ function buildSphereColorAttributes(vertex_count) {
     return colors
 }
 
+function getNormals(cubeMesh) {
+    const normals = [];
+        for (let i = 0; i < cubeMesh.length; i += 9) {
+            const v1 = [cubeMesh[i], cubeMesh[i + 1], cubeMesh[i + 2]];
+            const v2 = [cubeMesh[i + 3], cubeMesh[i + 4], cubeMesh[i + 5]];
+            const v3 = [cubeMesh[i + 6], cubeMesh[i + 7], cubeMesh[i + 8]];
+  
+            const A = [v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]];
+            const B = [v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2]];
+  
+            let normalX = A[1] * B[2] - A[2] * B[1];
+            let normalY = A[2] * B[0] - A[0] * B[2];
+            let normalZ = A[0] * B[1] - A[1] * B[0];
+  
+            const len = Math.hypot(normalX, normalY, normalZ);
+            if (len > 0.00001) {
+                normalX /= len;
+                normalY /= len;
+                normalZ /= len;
+            }
+
+            normals.push(normalX, normalY, normalZ);
+            normals.push(normalX, normalY, normalZ);
+            normals.push(normalX, normalY, normalZ);
+    }
+  
+    return normals;
+}
+  
+
 function updateCamVec(){
     g_lookX = Math.cos(g_yawA) * Math.cos(g_pitchA)
     g_lookY = Math.sin(g_pitchA)
@@ -662,6 +842,12 @@ function updateCam() {
         g_camPosX + g_lookX, g_camPosY + g_lookY, g_camPosZ + g_lookZ,
         g_upX, g_upY, g_upZ
     )
+}
+
+function updateLight1Y(amount) {
+    label = document.getElementById('light1Y')
+    label.textContent = `Red Light Y: ${Number(amount).toFixed(2)}`
+    g_lightPosition1[1] = Number(amount)
 }
 
 function buildTerrainColors(terrain, height) {
