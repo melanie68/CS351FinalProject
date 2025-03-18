@@ -51,6 +51,8 @@ var g_pyramidTextureCoord
 // images for texture
 var g_pyramidImage
 
+var platforms
+
 // Camera projection 
 var g_u_camera_ref
 
@@ -88,7 +90,7 @@ const TRIANGLE_SIZE = 3
 const FLOAT_SIZE = 4
 
 const SPHERE_SCALE = 0.1
-const PYRAMID_SCALE = 0.09
+const PYRAMID_SCALE = 0.5
 const EMERALD_SCALE = 0.01
 const TERRAIN_SCALE = 0.05
 
@@ -148,6 +150,115 @@ const LIGHT_CUBE_MESH = [
     -1, -1, -1,
 ]
 
+const CUBE_MESH = [
+    // front face
+    1, 1, 1,
+    -1, 1, 1,
+    -1, -1, 1,
+
+    1, 1, 1,
+    -1, -1, 1,
+    1, -1, 1,
+
+    // back face
+    1, 1, -1,
+    -1, -1, -1,
+    -1, 1, -1,
+
+    1, 1, -1,
+    1, -1, -1,
+    -1, -1, -1,
+
+    // right face
+    1, 1, 1,
+    1, -1, -1,
+    1, 1, -1,
+
+    1, 1, 1,
+    1, -1, 1,
+    1, -1, -1,
+
+    // left face
+    -1, 1, 1,
+    -1, 1, -1,
+    -1, -1, -1,
+
+    -1, 1, 1,
+    -1, -1, -1,
+    -1, -1, 1,
+
+    // top face
+    1, 1, 1,
+    1, 1, -1,
+    -1, 1, -1,
+
+    1, 1, 1,
+    -1, 1, -1,
+    -1, 1, 1,
+
+    // bottom face
+    1, -1, 1,
+    -1, -1, -1,
+    1, -1, -1,
+
+    1, -1, 1,
+    -1, -1, 1,
+    -1, -1, -1,
+]
+
+// TODO: add this to the VBO for use in the GPU
+const CUBE_TEX_MAPPING = [
+    // front face
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 1,
+    0, 0,
+    1, 0,
+
+    // back face
+    1, 0,
+    0, 1,
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1,
+
+    // right face
+    0, 1,
+    1, 0,
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 0,
+
+    // left face
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 1,
+    0, 0,
+    1, 0,
+
+    // top face
+    1, 0,
+    1, 1,
+    0, 1,
+    1, 0,
+    0, 1,
+    0, 0,
+
+    // bottom face
+    1, 1,
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1,
+    0, 0,
+]
+
+
+
 function main() {
 
 
@@ -177,35 +288,37 @@ function splitData(data) {
 
     for (let line of lines) {
         line = line.trim();
-        
-        if (line.startsWith('vt ')) {  // Texture coordinates
-            let parts = line.split(' ').slice(1);
-            textures.push(parts.map(parseFloat)); // Add the texture coordinate as an array of floats
+
+        if (line.startsWith('vt ')) { // Texture coordinates
+            let parts = line.split(/\s+/).slice(1); // Split using any whitespace
+            let floatParts = parts.map(num => parseFloat(num)); // Convert to floats
+            textures.push(...floatParts); // Flatten instead of nesting arrays
         }
     }
 
-    return textures;
+    return textures; // Now returns a flat array like [0, 0, 0, 0]
 }
 
 async function loadOBJFiles() {
     // open our OBJ file(s)
-    data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
-    g_sphereMesh = []
-    readObjFile(data, g_sphereMesh)
-    data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
-    g_pyramidMesh = []
-    readObjFile(data, g_pyramidMesh)
-    g_pyramidTextureCoord = splitData(data)
-    console.log(g_pyramidTextureCoord)
-    data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
-    g_emeraldMesh = []
-    readObjFile(data, g_emeraldMesh)
+    // data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
+    // g_sphereMesh = []
+    // readObjFile(data, g_sphereMesh)
+    // data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
+    // g_pyramidMesh = []
+    // readObjFile(data, g_pyramidMesh)
+    // g_pyramidTextureCoord = splitData(data)
+    // console.log(g_pyramidTextureCoord)
+    g_pyramidMesh = CUBE_MESH
+    // data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
+    // g_emeraldMesh = []
+    // readObjFile(data, g_emeraldMesh)
     // Wait to load our models before starting to render
     loadGLSLFiles()
 }
 async function loadImageFiles() {
     g_pyramidImage = new Image()
-    g_pyramidImage.src = "resources/brick_resized.png"
+    g_pyramidImage.src = "resources/pyramidtexture.png"
     await g_pyramidImage.decode()
     loadOBJFiles()
 }
@@ -224,6 +337,34 @@ function startRendering() {
         console.log('Failed to intialize shaders.')
         return
     }
+
+    platforms = [];
+
+    // Define pyramid base size (this controls how wide the base is)
+    let numPlatforms = 3; // You can adjust this for more platforms
+
+    for (let platform = 0; platform < numPlatforms; platform++) {
+        // Scale the platform's width and height to decrease as we go up
+        let scale = PYRAMID_SCALE - (0.1 * platform);  // Scale decreases with each platform
+        
+        // Platform height (you can change this if needed)
+        let scaleY = 0.08; // Height remains fixed (you can adjust this value too)
+        
+        // Create the platform scaling matrix for width and depth (scaleX, scaleZ) and height (scaleY)
+        let pModel = new Matrix4();
+        pModel = pModel.scale(scale, scaleY, scale);  // Apply scaling to width (x and z) and height (y)
+    
+        // Position each platform vertically with an increasing y value
+        let y = platform * 2; // Adjust this to set the vertical spacing between platforms
+        let pMatrix = new Matrix4().translate(5.0, y, 4.0); // Translation to the correct position
+    
+        // Add the platform's position and model to the platforms array
+        platforms.push({
+            platformModel: pModel,
+            platformMatrix: pMatrix
+        });
+    }
+
 
     // var terrainGenerator = new TerrainGenerator()
     // // use the current milliseconds as our seed by default
@@ -261,8 +402,8 @@ function startRendering() {
     // .concat(pyramidColors)
     // .concat(emeraldColors)
     // .concat(lightColors)
-    var data = g_pyramidMesh.concat(g_pyramidTextureCoord)
-
+    var data =  g_pyramidMesh.concat(CUBE_TEX_MAPPING)
+    console.log(data)
     // .concat(terrainColors)
     // g_vbo = initVBO(new Float32Array(data));
     if (!initVBO(new Float32Array(data))) {
@@ -277,6 +418,7 @@ function startRendering() {
     if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * g_pyramidMesh.length)) {
         return
     }
+    
     // if (!setupVec3('a_Color', 0, 
     //     (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) 
     //     * FLOAT_SIZE)) {
@@ -303,8 +445,8 @@ function startRendering() {
     // g_sphereModel = new Matrix4()
     // g_sphereModel = g_sphereModel.scale(SPHERE_SCALE, SPHERE_SCALE, -SPHERE_SCALE) // -z to make the plane not be "inside-out"
 
-    g_pyramidModel = new Matrix4()
-    g_pyramidModel = g_pyramidModel.scale(PYRAMID_SCALE, PYRAMID_SCALE, -PYRAMID_SCALE)
+    // g_pyramidModel = new Matrix4()
+    // g_pyramidModel = g_pyramidModel.scale(PYRAMID_SCALE, 0.05, -PYRAMID_SCALE)
 
     // g_emeraldModel = new Matrix4()
     // g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
@@ -313,7 +455,7 @@ function startRendering() {
     // g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
 
     // g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
-    g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
+    // g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
     // g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
     // g_terrainMatrix = new Matrix4().translate(0, -0.7, 0)
 
@@ -328,6 +470,7 @@ function startRendering() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR)
+    
 
     // Setup a "reasonable" perspective matrix
     const aspectRatio = g_canvas.width / g_canvas.height;
@@ -336,7 +479,7 @@ function startRendering() {
 
 
     // Enable culling and depth tests
-    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.FRONT_AND_BACK); // Cull both front and back faces
     gl.enable(gl.DEPTH_TEST)
 
     // Setup for ticks
@@ -369,6 +512,13 @@ function tick() {
     deltaTime = current_time - g_lastFrameMS
     g_lastFrameMS = current_time
 
+
+    
+    // Rotate each platform around the y-axis to animate
+    // platforms.forEach((platform, index) => {
+    //     platform.platformMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0);
+    // })
+
     // rotate the arm constantly around the given axis (of the model)
     // angle = SPHERE_ROTATION_SPEED * deltaTime
 
@@ -377,7 +527,7 @@ function tick() {
     // {
     //     g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
     // }
-    g_pyramidMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    // g_pyramidMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
     // g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
     
     updateCam()
@@ -411,10 +561,15 @@ function draw() {
 
     // gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
 
-    gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
+    // gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
+    // gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
     // gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
-    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
+    // gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
+    platforms.forEach((platform) => {
+        gl.uniformMatrix4fv(g_u_world_ref, false, platform.platformModel.elements)
+        gl.uniformMatrix4fv(g_u_model_ref, false, platform.platformMatrix.elements)
+        gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+    });
 
     // gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
     // gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
