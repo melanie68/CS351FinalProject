@@ -54,5 +54,5 @@ void main() {
         if (u_BLUELighting){
             gl_FragColor += vec4(color2, 1.0);
         }
-}
+    }
 }
