@@ -483,21 +483,26 @@ function startRendering() {
        return
    }
 
+   console.log("Position:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
+   console.log("Texture:",  PLATFORM_TEX_MAPPING.length)
+   console.log("Color:", sphereColors.length+ emeraldColors.length + lightColors.length)
+   console.log("Type:", sphereTypes.length + emeraldTypes.length + pyramidTypes.length)
+
    if (!setupVec(3, 'a_Position', 0, 0)) {
     return; // Exit if position setup fails
     }
-    console.log("TextCoordinates:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
     // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
-    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
+    console.log("Texture Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
         return; // Exit if texture coordinates setup fails
     }
-    console.log("Color:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length)
+    console.log("Color Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length)
     // Set up color data for the sphere, emerald, and light cube meshes
-    if (!setupVec(3, 'a_Color', 0, (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
+    if (!setupVec(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
         return; // Exit if color setup fails
     }
-    console.log("Object:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length+ emeraldColors.length + lightColors.length)
-    if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length+ emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
+    console.log("Object Start:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length)
+    if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
         return;
     }
 
