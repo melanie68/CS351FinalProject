@@ -30,9 +30,23 @@ var g_specPower
 var g_u_texture_ref
 var g_texturePointer
 
+var g_platformPosition1 = [2.0, 0, 2.0]
+var g_platformPosition2 = [2.0, 0.15, 2.0]
+var g_platformPosition3 = [2.0, 0.30, 2.0]
+var g_platformPosition4 = [2.0, 0.45, 2.0]
+
+var g_platformModel1
+var g_platformModel2
+var g_platformModel3
+var g_platformModel4
+
+var g_platformMatrix1
+var g_platformMatrix2
+var g_platformMatrix3
+var g_platformMatrix4
+
 // Models
 var g_sphereModel
-var g_pyramidModel
 var g_emeraldModel
 var g_terrainModel
 // usual model/world matrices
@@ -50,8 +64,6 @@ var g_pyramidTextureCoord
 
 // images for texture
 var g_pyramidImage
-
-var platforms
 
 // Camera projection 
 var g_u_camera_ref
@@ -282,23 +294,6 @@ function main() {
  * For much larger files, you may are welcome to make this more parallel
  * I made everything sequential for this class to make the logic easier to follow
  */
-function splitData(data) {
-    let lines = data.split('\n');
-    let textures = [];
-
-    for (let line of lines) {
-        line = line.trim();
-
-        if (line.startsWith('vt ')) { // Texture coordinates
-            let parts = line.split(/\s+/).slice(1); // Split using any whitespace
-            let floatParts = parts.map(num => parseFloat(num)); // Convert to floats
-            textures.push(...floatParts); // Flatten instead of nesting arrays
-        }
-    }
-
-    return textures; // Now returns a flat array like [0, 0, 0, 0]
-}
-
 async function loadOBJFiles() {
     // open our OBJ file(s)
     // data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
@@ -338,34 +333,6 @@ function startRendering() {
         return
     }
 
-    platforms = [];
-
-    // Define pyramid base size (this controls how wide the base is)
-    let numPlatforms = 3; // You can adjust this for more platforms
-
-    for (let platform = 0; platform < numPlatforms; platform++) {
-        // Scale the platform's width and height to decrease as we go up
-        let scale = PYRAMID_SCALE - (0.1 * platform);  // Scale decreases with each platform
-        
-        // Platform height (you can change this if needed)
-        let scaleY = 0.08; // Height remains fixed (you can adjust this value too)
-        
-        // Create the platform scaling matrix for width and depth (scaleX, scaleZ) and height (scaleY)
-        let pModel = new Matrix4();
-        pModel = pModel.scale(scale, scaleY, scale);  // Apply scaling to width (x and z) and height (y)
-    
-        // Position each platform vertically with an increasing y value
-        let y = platform * 2; // Adjust this to set the vertical spacing between platforms
-        let pMatrix = new Matrix4().translate(5.0, y, 4.0); // Translation to the correct position
-    
-        // Add the platform's position and model to the platforms array
-        platforms.push({
-            platformModel: pModel,
-            platformMatrix: pMatrix
-        });
-    }
-
-
     // var terrainGenerator = new TerrainGenerator()
     // // use the current milliseconds as our seed by default
     // // TODO: consider setting this as a constant when testing stuff!
@@ -390,7 +357,7 @@ function startRendering() {
 
     // initialize the VBO
     // var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
-    var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3)
+    // var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3)
     // var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
     // var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
 
@@ -454,6 +421,17 @@ function startRendering() {
     // g_terrainModel = new Matrix4()
     // g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
 
+    g_platformModel1 = new Matrix4().scale(PYRAMID_SCALE, 0.08, PYRAMID_SCALE)
+    g_platformModel2 = new Matrix4().scale(0.4, 0.08, 0.3)
+    g_platformModel3 = new Matrix4().scale(0.2, 0.08, 0.2)
+    g_platformModel4 = new Matrix4().scale(0.1, 0.08, 0.1)
+
+    g_platformMatrix1 = new Matrix4().translate(...g_platformPosition1)
+    g_platformMatrix2 = new Matrix4().translate(...g_platformPosition2)
+    g_platformMatrix3 = new Matrix4().translate(...g_platformPosition3)
+    g_platformMatrix4 = new Matrix4().translate(...g_platformPosition4)
+
+
     // g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
     // g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
     // g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
@@ -488,6 +466,7 @@ function startRendering() {
     // g_lightPosition1 = [2.5, 0.75, 2]
     // g_lightPosition2 = [2.0, 0.75, 2.5]
     // g_lightPosition3 = [1.75, 0.75, 1.5]
+
 
     // g_specPower = 16
 
@@ -527,7 +506,10 @@ function tick() {
     // {
     //     g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
     // }
-    // g_pyramidMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix1.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix2.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix3.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix4.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
     // g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
     
     updateCam()
@@ -565,15 +547,11 @@ function draw() {
     // gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
     // gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
     // gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
-    platforms.forEach((platform) => {
-        gl.uniformMatrix4fv(g_u_world_ref, false, platform.platformModel.elements)
-        gl.uniformMatrix4fv(g_u_model_ref, false, platform.platformMatrix.elements)
-        gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
-    });
 
     // gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
     // gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
     // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
+
 
     // light 1
     // gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
@@ -588,6 +566,23 @@ function draw() {
     // // light 3
     // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
     // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel1.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix1.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel2.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix2.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel3.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix3.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel4.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix4.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
+
 
 }
 
