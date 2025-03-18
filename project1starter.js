@@ -355,36 +355,35 @@ function startRendering() {
     var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
     var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
 
-    // var data = g_sphereMesh
-    // .concat(g_pyramidMesh)
-    // .concat(g_emeraldMesh)
-    // .concat(LIGHT_CUBE_MESH)
-    // .concat(sphereColors)
-    // .concat(pyramidColors)
-    // .concat(emeraldColors)
-    // .concat(lightColors)
-    var data =  PLATFORM_MESH.concat(PLATFORM_TEX_MAPPING)
-    console.log(data)
+    var data = PLATFORM_MESH
+    .concat(g_sphereMesh)
+    .concat(g_emeraldMesh)
+    .concat(LIGHT_CUBE_MESH)
+    .concat(PLATFORM_TEX_MAPPING)
+    .concat(sphereColors)
+    .concat(emeraldColors)
+    .concat(lightColors)
+    // var data =  PLATFORM_MESH.concat(PLATFORM_TEX_MAPPING)
+    // console.log(data)
     // .concat(terrainColors)
     // g_vbo = initVBO(new Float32Array(data));
     if (!initVBO(new Float32Array(data))) {
        return
    }
 
-    // Send our vertex data to the GPU
-    if (!setupVec(3, 'a_Position', 0, 0)) {
-        return
+   if (!setupVec(3, 'a_Position', 0, 0)) {
+    return; // Exit if position setup fails
     }
 
+    // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
     if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * PLATFORM_MESH.length)) {
-        return
+        return; // Exit if texture coordinates setup fails
     }
-    
-    // if (!setupVec3('a_Color', 0, 
-    //     (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) 
-    //     * FLOAT_SIZE)) {
-    //     return -1
-    // }
+
+    // Set up color data for the sphere, emerald, and light cube meshes
+    if (!setupVec3(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) * FLOAT_SIZE)) {
+        return; // Exit if color setup fails
+    }
 
     // Get references to GLSL uniforms
     g_u_model_ref = gl.getUniformLocation(gl.program, 'u_Model')
@@ -482,18 +481,18 @@ function tick() {
     g_lastFrameMS = current_time
 
     // rotate the arm constantly around the given axis (of the model)
-    // angle = SPHERE_ROTATION_SPEED * deltaTime
+    angle = SPHERE_ROTATION_SPEED * deltaTime
 
     // rotation matrices
-    // if (sphereRotateX) // only rotate sphere when true 
-    // {
-    //     g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
-    // }
+    if (sphereRotateX) // only rotate sphere when true 
+    {
+        g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
+    }
     g_platformMatrix1.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
     g_platformMatrix2.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
     g_platformMatrix3.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
     g_platformMatrix4.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
-    // g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
+    g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
     
     updateCam()
 
@@ -515,56 +514,53 @@ function draw() {
 
     gl.uniformMatrix4fv(g_u_camera_ref, false, g_viewMatrix.elements);
     gl.uniformMatrix4fv(g_u_projection_ref, false, g_projectionMatrix.elements)
-    // draw our one model (the teapot)
-    // gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
-    // gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
     
-    // gl.uniform1i(g_u_flatlighting_ref, false)
-    // gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
-    // gl.uniform1f(g_u_specpower_ref, g_specPower)
 
-
-    // gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
-
-    // gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
-    // gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
-    // gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
-    // gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
-
-    // gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
-    // gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
-    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
-
-
-    // light 1
-    // gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
-    // gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
-    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
-    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
-
-    // // light 2
-    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
-    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
-
-    // // light 3
-    // gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
-    // gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
-
+    // draw pyramid platforms 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel1.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix1.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel2.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix2.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel3.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix3.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.lengthh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel4.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix4.elements)
-    gl.drawArrays(gl.TRIANGLES, 0, g_pyramidMesh.length / 3);
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length.length / 3);
+
+     // draw the sphere 
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
+    gl.drawArrays(gl.TRIANGLES, (PLATFORM_MESH.length) / 3, g_sphereMesh.length / 3)
+    
+    // ligting
+    gl.uniform1i(g_u_flatlighting_ref, false)
+    gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
+    gl.uniform1f(g_u_specpower_ref, g_specPower)
+
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length) / 3, g_emeraldMesh.length / 3)
+
+    // light 1
+    gl.uniform3fv(g_u_flatcolor_ref, [1, 1, 1])
+    gl.uniformMatrix4fv(g_u_model_ref, false, new Matrix4().scale(.05, .05, .05).elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition1).elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+
+    // light 2
+    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition2).elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+
+    // light 3
+    gl.uniformMatrix4fv(g_u_world_ref, false, new Matrix4().translate(...g_lightPosition3).elements)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
 
 }
