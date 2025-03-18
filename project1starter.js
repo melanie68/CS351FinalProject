@@ -162,7 +162,7 @@ const LIGHT_CUBE_MESH = [
     -1, -1, -1,
 ]
 
-const CUBE_MESH = [
+const PLATFORM_MESH = [
     // front face
     1, 1, 1,
     -1, 1, 1,
@@ -219,7 +219,7 @@ const CUBE_MESH = [
 ]
 
 // TODO: add this to the VBO for use in the GPU
-const CUBE_TEX_MAPPING = [
+const PLATFORM_TEX_MAPPING = [
     // front face
     1, 1,
     0, 1,
@@ -296,19 +296,14 @@ function main() {
  */
 async function loadOBJFiles() {
     // open our OBJ file(s)
-    // data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
-    // g_sphereMesh = []
-    // readObjFile(data, g_sphereMesh)
-    // data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
-    // g_pyramidMesh = []
-    // readObjFile(data, g_pyramidMesh)
-    // g_pyramidTextureCoord = splitData(data)
-    // console.log(g_pyramidTextureCoord)
-    g_pyramidMesh = CUBE_MESH
-    // data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
-    // g_emeraldMesh = []
-    // readObjFile(data, g_emeraldMesh)
-    // Wait to load our models before starting to render
+    data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
+    g_sphereMesh = []
+    readObjFile(data, g_sphereMesh)
+    
+    data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
+    g_emeraldMesh = []
+    readObjFile(data, g_emeraldMesh)
+
     loadGLSLFiles()
 }
 async function loadImageFiles() {
@@ -356,10 +351,9 @@ function startRendering() {
     // }
 
     // initialize the VBO
-    // var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
-    // var pyramidColors = buildColorAttributes(g_pyramidMesh.length / 3)
-    // var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
-    // var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
+    var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
+    var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
+    var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
 
     // var data = g_sphereMesh
     // .concat(g_pyramidMesh)
@@ -369,7 +363,7 @@ function startRendering() {
     // .concat(pyramidColors)
     // .concat(emeraldColors)
     // .concat(lightColors)
-    var data =  g_pyramidMesh.concat(CUBE_TEX_MAPPING)
+    var data =  PLATFORM_MESH.concat(PLATFORM_TEX_MAPPING)
     console.log(data)
     // .concat(terrainColors)
     // g_vbo = initVBO(new Float32Array(data));
@@ -382,7 +376,7 @@ function startRendering() {
         return
     }
 
-    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * g_pyramidMesh.length)) {
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * PLATFORM_MESH.length)) {
         return
     }
     
@@ -400,23 +394,20 @@ function startRendering() {
     g_u_texture_ref = gl.getUniformLocation(gl.program, 'u_Texture')
 
     // light references
-    // g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
-    // g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
-    // g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
+    g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
+    g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
+    g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
 
-    // g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
-    // g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
-    // g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
+    g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
+    g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
+    g_u_flatcolor_ref = gl.getUniformLocation(gl.program, 'u_FlatColor')
 
     // model translation and scaling
-    // g_sphereModel = new Matrix4()
-    // g_sphereModel = g_sphereModel.scale(SPHERE_SCALE, SPHERE_SCALE, -SPHERE_SCALE) // -z to make the plane not be "inside-out"
+    g_sphereModel = new Matrix4()
+    g_sphereModel = g_sphereModel.scale(SPHERE_SCALE, SPHERE_SCALE, -SPHERE_SCALE) // -z to make the plane not be "inside-out"
 
-    // g_pyramidModel = new Matrix4()
-    // g_pyramidModel = g_pyramidModel.scale(PYRAMID_SCALE, 0.05, -PYRAMID_SCALE)
-
-    // g_emeraldModel = new Matrix4()
-    // g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
+    g_emeraldModel = new Matrix4()
+    g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
 
     // g_terrainModel = new Matrix4()
     // g_terrainModel = g_terrainModel.scale(TERRAIN_SCALE, TERRAIN_SCALE, -TERRAIN_SCALE)
@@ -432,9 +423,8 @@ function startRendering() {
     g_platformMatrix4 = new Matrix4().translate(...g_platformPosition4)
 
 
-    // g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
-    // g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
-    // g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
+    g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
+    g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
     // g_terrainMatrix = new Matrix4().translate(0, -0.7, 0)
 
     var g_texturePointer = gl.createTexture()
@@ -463,12 +453,12 @@ function startRendering() {
     // Setup for ticks
     g_lastFrameMS = Date.now()
 
-    // g_lightPosition1 = [2.5, 0.75, 2]
-    // g_lightPosition2 = [2.0, 0.75, 2.5]
-    // g_lightPosition3 = [1.75, 0.75, 1.5]
+    g_lightPosition1 = [2.5, 0.75, 2]
+    g_lightPosition2 = [2.0, 0.75, 2.5]
+    g_lightPosition3 = [1.75, 0.75, 1.5]
 
 
-    // g_specPower = 16
+    g_specPower = 16
 
     tick()
 }
@@ -490,13 +480,6 @@ function tick() {
     var current_time = Date.now()
     deltaTime = current_time - g_lastFrameMS
     g_lastFrameMS = current_time
-
-
-    
-    // Rotate each platform around the y-axis to animate
-    // platforms.forEach((platform, index) => {
-    //     platform.platformMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0);
-    // })
 
     // rotate the arm constantly around the given axis (of the model)
     // angle = SPHERE_ROTATION_SPEED * deltaTime
