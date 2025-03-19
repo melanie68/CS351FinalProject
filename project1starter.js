@@ -62,6 +62,8 @@ var g_sphereMesh
 var g_emeraldMesh
 
 var g_sphereNormals
+var g_pyramidNormals
+
 var g_emeraldNormals
 
 const sphereCOLOR = [1.0, 0, 0];
@@ -997,3 +999,4 @@ function setupVec(size, name, stride, offset) {
 
     return true
 }
+
