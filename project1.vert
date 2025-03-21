@@ -9,7 +9,6 @@ uniform mat4 u_Projection;
 
 uniform vec3 u_Light;
 
-
 varying vec2 v_TexCoord;
 varying vec3 v_Normal;
 
@@ -22,6 +21,7 @@ void main() {
 
     gl_Position = u_Projection * u_Camera * u_World * u_Model * vec4(a_Position, 1.0);
 
+    v_Color = a_Color;
     v_Normal = a_Normal;
     v_Position = a_Position;
     v_TexCoord = a_TexCoord;

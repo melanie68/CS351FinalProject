@@ -28,10 +28,7 @@ var g_u_specpower_ref
 var g_u_flatlighting_ref
 var g_u_flatcolor_ref
 
-var g_u_redlighting_ref
-var g_u_bluelighting_ref
-var g_u_greenlighting_ref
-
+var g_u_textureOn_ref
 
 var g_lightPosition1
 var g_specPower
@@ -479,12 +476,12 @@ function startRendering() {
     .concat(sphereColors)
     .concat(emeraldColors)
     .concat(lightColors)
-    .concat(sphereTypes)
-    .concat(emeraldTypes)
-    .concat(pyramidTypes) // Add object types for each mesh
+    // .concat(sphereTypes)
+    // .concat(emeraldTypes)
+    // .concat(pyramidTypes) // Add object types for each mesh
     .concat(PLATFORM_NORMALS)
-    .concat(g_platformNormals)
     .concat(g_emeraldNormals)
+    .concat(g_sphereNormals)
     .concat(CUBE_NORMALS);
 
     if (!initVBO(new Float32Array(data))) {
@@ -501,20 +498,21 @@ function startRendering() {
     }
     // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
     console.log("Texture Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
-    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
         return; // Exit if texture coordinates setup fails
     }
     console.log("Color Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length)
     // Set up color data for the sphere, emerald, and light cube meshes
-    if (!setupVec(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
+    if (!setupVec(3, 'a_Color', 0, (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
         return; // Exit if color setup fails
     }
-    console.log("Object Start:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length)
-    if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
-        return;
+    // console.log("Object Start:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length)
+    // if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
+    //     return;
+    // }
 
-    if (!setupVec3('a_Normal', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length + sphereTypes.length + emeraldTypes.length + pyramidTypes.length) * FLOAT_SIZE)) {
-        return
+    if (!setupVec(3, 'a_Normal', 0, (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
+        return;
     }
 
     // Get references to GLSL uniforms
@@ -537,6 +535,7 @@ function startRendering() {
     g_u_redlighting_ref = gl.getUniformLocation(gl.program, 'u_REDLighting')
     g_u_bluelighting_ref = gl.getUniformLocation(gl.program, 'u_BLUELighting')
     g_u_greenlighting_ref = gl.getUniformLocation(gl.program, 'u_GREENLighting')
+    g_u_textureOn_ref = gl.getUniformLocation(gl.program, 'u_TextureOn')
 
 
     // model translation and scaling
@@ -646,12 +645,14 @@ function draw() {
     // Clear the canvas with a black backgroundd
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.uniform1i(g_u_flatlighting_ref, false)
+
 
     gl.uniformMatrix4fv(g_u_camera_ref, false, g_viewMatrix.elements);
     gl.uniformMatrix4fv(g_u_projection_ref, false, g_projectionMatrix.elements)
     
-
     // draw pyramid platforms 
+    gl.uniform1i(g_u_textureOn_ref, true)
     gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel1.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix1.elements)
     gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
@@ -669,6 +670,7 @@ function draw() {
     gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3);
 
      // draw the sphere 
+    gl.uniform1i(g_u_textureOn_ref, false)
     gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
 
@@ -676,7 +678,6 @@ function draw() {
     inverseTranspose.invert().transpose()
     gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
 
-    gl.uniform1i(g_u_flatlighting_ref, false)
     gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
     gl.uniform3fv(g_u_light_ref2, new Float32Array(g_lightPosition2))
     gl.uniform3fv(g_u_light_ref3, new Float32Array(g_lightPosition3))
@@ -687,7 +688,7 @@ function draw() {
 
     gl.uniform1f(g_u_specpower_ref, g_specPower)
     gl.uniform3fv(g_u_diffuse_ref, new Float32Array(sphereCOLOR))
-
+    
     gl.drawArrays(gl.TRIANGLES, (PLATFORM_MESH.length) / 3, g_sphereMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
@@ -1024,4 +1025,3 @@ function setupVec(size, name, stride, offset) {
 
     return true
 }
-
