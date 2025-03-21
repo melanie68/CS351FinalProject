@@ -20,6 +20,10 @@ var g_u_light_ref1
 var g_u_light_ref2
 var g_u_light_ref3
 
+var g_u_redlighting_ref
+var g_u_bluelighting_ref
+var g_u_greenlighting_ref
+
 var g_u_specpower_ref
 var g_u_flatlighting_ref
 var g_u_flatcolor_ref
@@ -32,9 +36,26 @@ var g_u_greenlighting_ref
 var g_lightPosition1
 var g_specPower
 
+var g_u_texture_ref
+var g_texturePointer
+
+var g_platformPosition1 = [2.0, 0, 2.0]
+var g_platformPosition2 = [2.0, 0.15, 2.0]
+var g_platformPosition3 = [2.0, 0.30, 2.0]
+var g_platformPosition4 = [2.0, 0.45, 2.0]
+
+var g_platformModel1
+var g_platformModel2
+var g_platformModel3
+var g_platformModel4
+
+var g_platformMatrix1
+var g_platformMatrix2
+var g_platformMatrix3
+var g_platformMatrix4
+
 // Models
 var g_sphereModel
-var g_pyramidModel
 var g_emeraldModel
 
 // usual model/world matrices
@@ -43,11 +64,11 @@ var g_worldMatrix
 
 // Mesh definitions
 var g_sphereMesh
-var g_pyramidMesh
 var g_emeraldMesh
 
 var g_sphereNormals
 var g_pyramidNormals
+
 var g_emeraldNormals
 
 const sphereCOLOR = [1.0, 0, 0];
@@ -57,7 +78,10 @@ const lightCOLOR = [1.0, 1.00, 1.00];
 
 
 // texture coordinates
-var g_pyramidTexture
+var g_pyramidTextureCoord
+
+// images for texture
+var g_pyramidImage
 
 // Camera projection 
 var g_u_camera_ref
@@ -100,7 +124,7 @@ const TRIANGLE_SIZE = 3
 const FLOAT_SIZE = 4
 
 const SPHERE_SCALE = 0.1
-const PYRAMID_SCALE = 0.03
+const PYRAMID_SCALE = 0.5
 const EMERALD_SCALE = 0.01
 
 const LIGHT_CUBE_MESH = [
@@ -209,10 +233,173 @@ const CUBE_NORMALS = [
     0, -1, 0,
 ]
 
+// same as cube normals 
+const PLATFORM_NORMALS = [
+    // front face
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+
+    // back face
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+    0, 0, -1,
+
+    // right face
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+    1, 0, 0,
+
+    // left face
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+    -1, 0, 0,
+
+    // top face
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+
+    // bottom face
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+    0, -1, 0,
+]
+
+
+const PLATFORM_MESH = [
+    // front face
+    1, 1, 1,
+    -1, 1, 1,
+    -1, -1, 1,
+
+    1, 1, 1,
+    -1, -1, 1,
+    1, -1, 1,
+
+    // back face
+    1, 1, -1,
+    -1, -1, -1,
+    -1, 1, -1,
+
+    1, 1, -1,
+    1, -1, -1,
+    -1, -1, -1,
+
+    // right face
+    1, 1, 1,
+    1, -1, -1,
+    1, 1, -1,
+
+    1, 1, 1,
+    1, -1, 1,
+    1, -1, -1,
+
+    // left face
+    -1, 1, 1,
+    -1, 1, -1,
+    -1, -1, -1,
+
+    -1, 1, 1,
+    -1, -1, -1,
+    -1, -1, 1,
+
+    // top face
+    1, 1, 1,
+    1, 1, -1,
+    -1, 1, -1,
+
+    1, 1, 1,
+    -1, 1, -1,
+    -1, 1, 1,
+
+    // bottom face
+    1, -1, 1,
+    -1, -1, -1,
+    1, -1, -1,
+
+    1, -1, 1,
+    -1, -1, 1,
+    -1, -1, -1,
+]
+
+// TODO: add this to the VBO for use in the GPU
+const PLATFORM_TEX_MAPPING = [
+    // front face
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 1,
+    0, 0,
+    1, 0,
+
+    // back face
+    1, 0,
+    0, 1,
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1,
+
+    // right face
+    0, 1,
+    1, 0,
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 0,
+
+    // left face
+    1, 1,
+    0, 1,
+    0, 0,
+    1, 1,
+    0, 0,
+    1, 0,
+
+    // top face
+    1, 0,
+    1, 1,
+    0, 1,
+    1, 0,
+    0, 1,
+    0, 0,
+
+    // bottom face
+    1, 1,
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1,
+    0, 0,
+]
+
 function main() {
 
 
     setupKeyBinds()
+    slider_input = document.getElementById('slider1Y')
+    slider_input.addEventListener('input', (event) => {
+        updateLight1Y(event.target.value)
+    })
 
     slider_input = document.getElementById('slider1Y')
     slider_input.addEventListener('input', (event) => {
@@ -228,7 +415,7 @@ function main() {
     }
 
     // We will call this at the end of most main functions from now on
-    loadOBJFiles()
+    loadImageFiles()
 }
 
 /*
@@ -236,27 +423,27 @@ function main() {
  * For much larger files, you may are welcome to make this more parallel
  * I made everything sequential for this class to make the logic easier to follow
  */
-
-
 async function loadOBJFiles() {
     // open our OBJ file(s)
     data = await fetch('./resources/sphere.tri.obj').then(response => response.text()).then((x) => x)
     g_sphereMesh = []
     g_sphereNormals = []
     readObjFile(data, g_sphereMesh)
-    data = await fetch('./resources/pyramid.tri.obj').then(response => response.text()).then((x) => x)
-    g_sphereNormals = getNormals(g_sphereMesh);
-    g_pyramidMesh = []
-    g_pyramidNormals = []
-    readObjFile(data, g_pyramidMesh, g_pyramidNormals)
-    g_pyramidNormals = getNormals(g_pyramidMesh);
+    g_sphereNormals = getNormals(g_sphereMesh)
     data = await fetch('./resources/emerald1.tri.obj').then(response => response.text()).then((x) => x)
     g_emeraldMesh = []
     g_emeraldNormals = []
-    readObjFile(data, g_emeraldMesh, g_emeraldNormals)
+    readObjFile(data, g_emeraldMesh)
     g_emeraldNormals = getNormals(g_emeraldMesh);
-    // Wait to load our models before starting to render
+
     loadGLSLFiles()
+}
+
+async function loadImageFiles() {
+    g_pyramidImage = new Image()
+    g_pyramidImage.src = "resources/pyramidtexture.png"
+    await g_pyramidImage.decode()
+    loadOBJFiles()
 }
 
 async function loadGLSLFiles() {
@@ -274,27 +461,59 @@ function startRendering() {
         return
     }
 
-
     // initialize the VBO
-    var data = g_sphereMesh
-    .concat(g_pyramidMesh)
+    var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
+    var emeraldColors = buildEmeraldColorAttributes(g_emeraldMesh.length / 3)
+    var lightColors = buildLightColorAttributes(LIGHT_CUBE_MESH.length / 3)
+
+    var sphereTypes = new Array(g_sphereMesh.length / 3).fill(2);  // 2 for sphere
+    var emeraldTypes = new Array(g_emeraldMesh.length / 3).fill(1);  // 1 for emerald
+    var pyramidTypes = new Array(PLATFORM_MESH.length / 3).fill(0);  // 0 for pyramid (texture)
+
+
+    var data = PLATFORM_MESH
+    .concat(g_sphereMesh)
     .concat(g_emeraldMesh)
     .concat(LIGHT_CUBE_MESH)
-    .concat(g_sphereNormals)
-    .concat(g_pyramidNormals)
+    .concat(PLATFORM_TEX_MAPPING)
+    .concat(sphereColors)
+    .concat(emeraldColors)
+    .concat(lightColors)
+    .concat(sphereTypes)
+    .concat(emeraldTypes)
+    .concat(pyramidTypes) // Add object types for each mesh
+    .concat(PLATFORM_NORMALS)
+    .concat(g_platformNormals)
     .concat(g_emeraldNormals)
-    .concat(CUBE_NORMALS)
+    .concat(CUBE_NORMALS);
 
     if (!initVBO(new Float32Array(data))) {
        return
    }
 
-    // Send our vertex data to the GPU
-    if (!setupVec3('a_Position', 0, 0)) {
-        return
-    }
+   console.log("Position:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
+   console.log("Texture:",  PLATFORM_TEX_MAPPING.length)
+   console.log("Color:", sphereColors.length+ emeraldColors.length + lightColors.length)
+   console.log("Type:", sphereTypes.length + emeraldTypes.length + pyramidTypes.length)
 
-    if (!setupVec3('a_Normal', 0, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) * FLOAT_SIZE)) {
+   if (!setupVec(3, 'a_Position', 0, 0)) {
+    return; // Exit if position setup fails
+    }
+    // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
+    console.log("Texture Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
+    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
+        return; // Exit if texture coordinates setup fails
+    }
+    console.log("Color Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length)
+    // Set up color data for the sphere, emerald, and light cube meshes
+    if (!setupVec(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
+        return; // Exit if color setup fails
+    }
+    console.log("Object Start:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length)
+    if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
+        return;
+
+    if (!setupVec3('a_Normal', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length + sphereTypes.length + emeraldTypes.length + pyramidTypes.length) * FLOAT_SIZE)) {
         return
     }
 
@@ -303,6 +522,7 @@ function startRendering() {
     g_u_world_ref = gl.getUniformLocation(gl.program, 'u_World')
     g_u_camera_ref = gl.getUniformLocation(gl.program, 'u_Camera')
     g_u_projection_ref = gl.getUniformLocation(gl.program, 'u_Projection')
+    g_u_texture_ref = gl.getUniformLocation(gl.program, 'u_Texture')
 
     // light references
     g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
@@ -319,21 +539,39 @@ function startRendering() {
     g_u_greenlighting_ref = gl.getUniformLocation(gl.program, 'u_GREENLighting')
 
 
-
     // model translation and scaling
     g_sphereModel = new Matrix4()
     g_sphereModel = g_sphereModel.scale(SPHERE_SCALE, SPHERE_SCALE, -SPHERE_SCALE) // -z to make the plane not be "inside-out"
 
-    g_pyramidModel = new Matrix4()
-    g_pyramidModel = g_pyramidModel.scale(PYRAMID_SCALE, PYRAMID_SCALE, -PYRAMID_SCALE)
-
     g_emeraldModel = new Matrix4()
     g_emeraldModel = g_emeraldModel.scale(EMERALD_SCALE, EMERALD_SCALE, -EMERALD_SCALE)
 
+    g_platformModel1 = new Matrix4().scale(PYRAMID_SCALE, 0.08, PYRAMID_SCALE)
+    g_platformModel2 = new Matrix4().scale(0.4, 0.08, 0.3)
+    g_platformModel3 = new Matrix4().scale(0.2, 0.08, 0.2)
+    g_platformModel4 = new Matrix4().scale(0.1, 0.08, 0.1)
+
+    g_platformMatrix1 = new Matrix4().translate(...g_platformPosition1)
+    g_platformMatrix2 = new Matrix4().translate(...g_platformPosition2)
+    g_platformMatrix3 = new Matrix4().translate(...g_platformPosition3)
+    g_platformMatrix4 = new Matrix4().translate(...g_platformPosition4)
+
 
     g_sphereMatrix = new Matrix4().translate(2.5, 0.85, 2.8)
-    g_pyramidMatrix = new Matrix4().translate(2, 0.1, 2)
-    g_emeraldMatrix = new Matrix4().translate(2, 0.45, 2)
+    g_emeraldMatrix = new Matrix4().translate(2, 0.65, 2)
+
+    var g_texturePointer = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, g_texturePointer)
+
+    gl.uniform1i(g_u_texture_ref, g_texturePointer)
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, g_pyramidImage)
+
+    gl.generateMipmap(gl.TEXTURE_2D)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR)
+
 
     // Setup a "reasonable" perspective matrix
     const aspectRatio = g_canvas.width / g_canvas.height;
@@ -342,7 +580,7 @@ function startRendering() {
 
 
     // Enable culling and depth tests
-    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.FRONT_AND_BACK); // Cull both front and back faces
     gl.enable(gl.DEPTH_TEST)
 
     // Setup for ticks
@@ -358,28 +596,6 @@ function startRendering() {
 
     tick()
 }
-
-
-function findHighestPoint(vertices) {
-    let highestPoint = -Infinity;
-    let highestPosition = { x: 0, y: 0, z: 0 };
-
-    // Loop through the vertices (x, y, z) and find the maximum y-value
-    for (let i = 0; i < vertices.length; i += 3) {
-        let x = vertices[i];     // x value
-        let y = vertices[i + 1]; // y value (height)
-        let z = vertices[i + 2]; // z value
-
-        // Check if this y value is higher than the current highest
-        if (y > highestPoint) {
-            highestPoint = y;
-            highestPosition = { x: x, y: y, z: z };
-        }
-    }
-
-    return highestPosition;
-}
-
 
 
 // extra constants for cleanliness
@@ -407,7 +623,10 @@ function tick() {
     {
         g_sphereMatrix.rotate(-deltaTime * SPHERE_ROTATION_SPEED, 0, 1, 0)
     }
-    g_pyramidMatrix.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix1.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix2.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix3.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
+    g_platformMatrix4.rotate(-deltaTime * PYRAMID_ROT_SPEED, 0, 1, 0)
     g_emeraldMatrix.rotate(-deltaTime * EMERALD_ROT_SPEED, 0, 1, 0)
     
     updateCam()
@@ -430,7 +649,26 @@ function draw() {
 
     gl.uniformMatrix4fv(g_u_camera_ref, false, g_viewMatrix.elements);
     gl.uniformMatrix4fv(g_u_projection_ref, false, g_projectionMatrix.elements)
-    // draw our one model (the teapot)
+    
+
+    // draw pyramid platforms 
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel1.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix1.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel2.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix2.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel3.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix3.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3)
+
+    gl.uniformMatrix4fv(g_u_model_ref, false, g_platformModel4.elements)
+    gl.uniformMatrix4fv(g_u_world_ref, false, g_platformMatrix4.elements)
+    gl.drawArrays(gl.TRIANGLES, 0, PLATFORM_MESH.length / 3);
+
+     // draw the sphere 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_sphereModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_sphereMatrix.elements)
 
@@ -438,7 +676,6 @@ function draw() {
     inverseTranspose.invert().transpose()
     gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
 
-    
     gl.uniform1i(g_u_flatlighting_ref, false)
     gl.uniform3fv(g_u_light_ref1, new Float32Array(g_lightPosition1))
     gl.uniform3fv(g_u_light_ref2, new Float32Array(g_lightPosition2))
@@ -448,23 +685,10 @@ function draw() {
     gl.uniform1i(g_u_bluelighting_ref, blueOn)
     gl.uniform1i(g_u_greenlighting_ref, greenOn)
 
-
-
     gl.uniform1f(g_u_specpower_ref, g_specPower)
-
     gl.uniform3fv(g_u_diffuse_ref, new Float32Array(sphereCOLOR))
 
-
-    gl.drawArrays(gl.TRIANGLES, 0, g_sphereMesh.length / 3)
-
-    gl.uniformMatrix4fv(g_u_model_ref, false, g_pyramidModel.elements)
-    gl.uniformMatrix4fv(g_u_world_ref, false, g_pyramidMatrix.elements)
-    var inverseTranspose = new Matrix4(g_pyramidMatrix).multiply(g_pyramidModel)
-    inverseTranspose.invert().transpose()
-    gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
-    gl.uniform3fv(g_u_diffuse_ref, new Float32Array(pyramidCOLOR))
-
-    gl.drawArrays(gl.TRIANGLES, g_sphereMesh.length / 3, g_pyramidMesh.length / 3)
+    gl.drawArrays(gl.TRIANGLES, (PLATFORM_MESH.length) / 3, g_sphereMesh.length / 3)
 
     gl.uniformMatrix4fv(g_u_model_ref, false, g_emeraldModel.elements)
     gl.uniformMatrix4fv(g_u_world_ref, false, g_emeraldMatrix.elements)
@@ -472,12 +696,11 @@ function draw() {
     inverseTranspose.invert().transpose()
     gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
     gl.uniform3fv(g_u_diffuse_ref, new Float32Array(emeraldCOLOR))
-
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length) / 3, g_emeraldMesh.length / 3)
+  
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length) / 3, g_emeraldMesh.length / 3)
 
     // light 1
     gl.uniform1i(g_u_flatlighting_ref, true)
-
     gl.uniform3fv(g_u_flatcolor_ref, [1, 0, 0])
     let g_lightModel = new Matrix4().scale(.05, .05, .05);
     let g_lightMatrix = new Matrix4().translate(...g_lightPosition1);
@@ -488,7 +711,7 @@ function draw() {
     gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
     gl.uniform3fv(g_u_diffuse_ref, new Float32Array(lightCOLOR))
 
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
     // // light 2
     gl.uniform3fv(g_u_flatcolor_ref, [0, 0, 1])
@@ -499,7 +722,7 @@ function draw() {
     inverseTranspose.invert().transpose()
     gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
 
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
     // // light 3
     gl.uniform3fv(g_u_flatcolor_ref, [0, 1, 0])
@@ -510,13 +733,25 @@ function draw() {
     inverseTranspose.invert().transpose()
     gl.uniformMatrix4fv(g_u_inversetranspose_ref, false, inverseTranspose.elements)
 
-    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + g_pyramidMesh.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
+    gl.drawArrays(gl.TRIANGLES, (g_sphereMesh.length + PLATFORM_MESH.length + g_emeraldMesh.length) / 3, LIGHT_CUBE_MESH.length / 3)
 
 }
 
 function updateRotation()
 {
     sphereRotateX = true
+}
+function updateRed()
+{
+    redOn = !redOn
+}
+function updateGreen()
+{
+    greenOn = !greenOn
+}
+function updateBlue()
+{
+    blueOn = !blueOn
 }
 
 function updateRed()
@@ -612,7 +847,8 @@ function getNormals(cubeMesh) {
     }
   
     return normals;
-  }
+}
+
   
 
 function updateCamVec(){
@@ -647,6 +883,30 @@ function updateLight1Y(amount) {
     label = document.getElementById('light1Y')
     label.textContent = `Red Light Y: ${Number(amount).toFixed(2)}`
     g_lightPosition1[1] = Number(amount)
+}
+
+function buildTerrainColors(terrain, height) {
+    var colors = [];
+    for (var i = 0; i < terrain.length; i++) {
+        // Normalize the height of the vertex (0 = bottom, 1 = top)
+        var normalizedHeight = terrain[i][1] / height;
+
+        // Define the base colors
+        var bottomColor = [0.4, 0.2, 0.0]; // Brown (RGB)
+        var topColor = [1.0, 0.0, 0.0];    // Red (RGB)
+
+        // Interpolate between brown and red based on the normalized height
+        var color = [
+            bottomColor[0] + (topColor[0] - bottomColor[0]) * normalizedHeight, // Red
+            bottomColor[1] + (topColor[1] - bottomColor[1]) * normalizedHeight, // Green
+            bottomColor[2] + (topColor[2] - bottomColor[2]) * normalizedHeight  // Blue
+        ];
+
+        // Add the color to the colors array
+        colors.push(...color);
+    }
+
+    return colors;
 }
 
 
@@ -750,7 +1010,7 @@ function initVBO(data) {
  * Helper function to load the given vec3 data chunk onto the VBO
  * Requires that the VBO already be setup and assigned to the GPU
  */
-function setupVec3(name, stride, offset) {
+function setupVec(size, name, stride, offset) {
     // Get the attribute by name
     var attributeID = gl.getAttribLocation(gl.program, `${name}`)
     if (attributeID < 0) {
@@ -759,8 +1019,9 @@ function setupVec3(name, stride, offset) {
     }
 
     // Set how the GPU fills the a_Position variable with data from the GPU 
-    gl.vertexAttribPointer(attributeID, 3, gl.FLOAT, false, stride, offset)
+    gl.vertexAttribPointer(attributeID, size, gl.FLOAT, false, stride, offset)
     gl.enableVertexAttribArray(attributeID)
 
     return true
 }
+
