@@ -446,12 +446,49 @@ async function loadGLSLFiles() {
     startRendering()
 }
 
+function generateTerrainTextureCoordinates(terrain, width, depth) {
+    var textureCoordinates = [];
+    for (let i = 0; i < terrain.length; i++) {
+        let x = terrain[i][0]; // X position of the vertex
+        let z = terrain[i][2]; // Z position of the vertex
+
+        // Normalize the coordinates to [0, 1] range, and use a repeating pattern
+        let u = (x % width) / width;  // Horizontal texture repeat
+        let v = (z % depth) / depth;  // Vertical texture repeat
+
+        textureCoordinates.push(u, v);
+    }
+    return textureCoordinates;
+}
+
 function startRendering() {
     // Initialize GPU's vertex and fragment shaders programs
     if (!initShaders(gl, g_vshader, g_fshader)) {
         console.log('Failed to intialize shaders.')
         return
     }
+    var terrainGenerator = new TerrainGenerator()
+    // use the current milliseconds as our seed by default
+    // TODO: consider setting this as a constant when testing stuff!
+    //   just make sure to change it back to something semi-random before submitting :)
+    var seed = new Date().getMilliseconds()
+
+    var options = { 
+        width: 100, 
+        height: 10, 
+        depth: 100, 
+        seed: seed,
+        noisefn: "wave", 
+        roughness: 20
+    };
+    
+    var terrain = terrainGenerator.generateTerrainMesh(options)
+    g_terrainMesh = []
+    for (var i = 0; i < terrain.length; i++) {
+        g_terrainMesh.push(...terrain[i])
+    }
+    var terrainTextureCoordinates = generateTerrainTextureCoordinates(terrain, options.width, options.depth);
+
 
     // initialize the VBO
     var sphereColors = buildSphereColorAttributes(g_sphereMesh.length / 3)
@@ -461,6 +498,7 @@ function startRendering() {
     var sphereTypes = new Array(g_sphereMesh.length / 3).fill(2);  // 2 for sphere
     var emeraldTypes = new Array(g_emeraldMesh.length / 3).fill(1);  // 1 for emerald
     var pyramidTypes = new Array(PLATFORM_MESH.length / 3).fill(0);  // 0 for pyramid (texture)
+    var lightTypes = new Array(LIGHT_CUBE_MESH.length / 3).fill(3);
 
 
     var data = PLATFORM_MESH
@@ -471,39 +509,40 @@ function startRendering() {
     .concat(sphereColors)
     .concat(emeraldColors)
     .concat(lightColors)
+    .concat(pyramidTypes)
     .concat(sphereTypes)
     .concat(emeraldTypes)
-    .concat(pyramidTypes);  // Add object types for each mesh
+    .concat(lightTypes)
 
-
-    // var data =  PLATFORM_MESH.concat(PLATFORM_TEX_MAPPING)
-    // console.log(data)
-    // .concat(terrainColors)
-    // g_vbo = initVBO(new Float32Array(data));
     if (!initVBO(new Float32Array(data))) {
        return
    }
+
+    const positionOffset = 0;
+    const textureOffset = (PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length) * FLOAT_SIZE;
+    const colorOffset = textureOffset + (PLATFORM_TEX_MAPPING.length* FLOAT_SIZE);
+    const typeOffset = colorOffset + (sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE;
 
    console.log("Position:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
    console.log("Texture:",  PLATFORM_TEX_MAPPING.length)
    console.log("Color:", sphereColors.length+ emeraldColors.length + lightColors.length)
    console.log("Type:", sphereTypes.length + emeraldTypes.length + pyramidTypes.length)
 
-   if (!setupVec(3, 'a_Position', 0, 0)) {
+   if (!setupVec(3, 'a_Position', 0, positionOffset)) {
     return; // Exit if position setup fails
     }
     // Set up texture coordinates attribute (a_TexCoord) for PLATFORM_MESH only
     console.log("Texture Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length)
-    if (!setupVec(2, 'a_TexCoord', 0, FLOAT_SIZE * (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length))) {
+    if (!setupVec(2, 'a_TexCoord', 0, textureOffset)) {
         return; // Exit if texture coordinates setup fails
     }
     console.log("Color Start:", PLATFORM_MESH.length + g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length)
     // Set up color data for the sphere, emerald, and light cube meshes
-    if (!setupVec(3, 'a_Color', 0, (g_sphereMesh.length + g_emeraldMesh.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length) * FLOAT_SIZE)) {
+    if (!setupVec(3, 'a_Color', 0, colorOffset)) {
         return; // Exit if color setup fails
     }
     console.log("Object Start:", g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length)
-    if (!setupVec(1, 'a_ObjectType', 0, (g_sphereMesh.length + g_emeraldMesh.length + PLATFORM_MESH.length + LIGHT_CUBE_MESH.length + PLATFORM_TEX_MAPPING.length + sphereColors.length + emeraldColors.length + lightColors.length) * FLOAT_SIZE)) {
+    if (!setupVec(1, 'a_ObjectType', 0, typeOffset)) {
         return;
     }
 
@@ -560,7 +599,8 @@ function startRendering() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR)
-    
+
+
 
     // Setup a "reasonable" perspective matrix
     const aspectRatio = g_canvas.width / g_canvas.height;
