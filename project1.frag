@@ -29,6 +29,7 @@ void main() {
 
     if (u_TextureOn) {
         finalColor = texture2D(u_Texture, v_TexCoord);
+        
     } else if (u_FlatLighting) {
         finalColor = vec4(u_FlatColor, 1.0);
     } else {
