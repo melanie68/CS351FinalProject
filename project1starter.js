@@ -602,12 +602,9 @@ function startRendering() {
 
 
 // extra constants for cleanliness
-// var SPHERE_ROTATION_SPEED = .1
+var SPHERE_ROTATION_SPEED = .1
 var PYRAMID_ROT_SPEED = 0.06
-// var EMERALD_ROT_SPEED = 0.7
-var SPHERE_ROTATION_SPEED = .0
-// var PYRAMID_ROT_SPEED = 0.00
-var EMERALD_ROT_SPEED = 0.0
+var EMERALD_ROT_SPEED = 0.7
 const CAMERA_SPEED = .1
 const CAMERA_ROT_SPEED = .1
 

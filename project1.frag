@@ -37,7 +37,7 @@ void main() {
 
     if (!u_FlatLighting) {
         vec3 worldPosition = vec3(u_World * u_Model * vec4(v_Position, 1.0));
-        vec3 worldNormal = normalize(vec3(u_ModelWorldInverseTranspose * vec4(v_Normal, 0.0)));
+        vec3 worldNormal = normalize(vec3(u_World * u_Model * vec4(v_Normal, 0.0)));
 
         vec3 lightColor1 = vec3(1.0, 0.0, 0.0); // Red light
         vec3 lightColor2 = vec3(0.0, 0.0, 1.0); // Blue light
