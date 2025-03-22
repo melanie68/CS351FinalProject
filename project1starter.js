@@ -31,6 +31,9 @@ var g_u_flatcolor_ref
 var g_u_textureOn_ref
 
 var g_lightPosition1
+var g_lightPosition2
+var g_lightPosition3
+
 var g_specPower
 
 var g_u_texture_ref
@@ -68,7 +71,7 @@ var g_pyramidNormals
 
 var g_emeraldNormals
 
-const sphereCOLOR = [1.0, 0, 0];
+const sphereCOLOR = [0.5, 0, 0.1];
 const pyramidCOLOR = [1.0, 0.9, 0];
 const emeraldCOLOR = [0.2, 0.7, 0.1];
 const lightCOLOR = [1.0, 1.00, 1.00];
@@ -397,11 +400,6 @@ function main() {
     slider_input.addEventListener('input', (event) => {
         updateLight1Y(event.target.value)
     })
-
-    slider_input = document.getElementById('slider1Y')
-    slider_input.addEventListener('input', (event) => {
-        updateLight1Y(event.target.value)
-    })
     g_canvas = document.getElementById('canvas')
 
     // Get the rendering context for WebGL
@@ -480,8 +478,8 @@ function startRendering() {
     // .concat(emeraldTypes)
     // .concat(pyramidTypes) // Add object types for each mesh
     .concat(PLATFORM_NORMALS)
-    .concat(g_emeraldNormals)
     .concat(g_sphereNormals)
+    .concat(g_emeraldNormals)
     .concat(CUBE_NORMALS);
 
     if (!initVBO(new Float32Array(data))) {
@@ -524,9 +522,15 @@ function startRendering() {
 
     // light references
     g_u_inversetranspose_ref = gl.getUniformLocation(gl.program, 'u_ModelWorldInverseTranspose')
+
     g_u_light_ref1 = gl.getUniformLocation(gl.program, 'u_Light1')
     g_u_light_ref2 = gl.getUniformLocation(gl.program, 'u_Light2')
     g_u_light_ref3 = gl.getUniformLocation(gl.program, 'u_Light3')
+
+    console.log(g_u_model_ref);
+    console.log(g_u_world_ref);
+    console.log(g_u_texture_ref);
+    console.log(g_u_light_ref3);
 
     g_u_specpower_ref = gl.getUniformLocation(gl.program, 'u_SpecPower')
     g_u_flatlighting_ref = gl.getUniformLocation(gl.program, 'u_FlatLighting')
@@ -598,9 +602,12 @@ function startRendering() {
 
 
 // extra constants for cleanliness
-var SPHERE_ROTATION_SPEED = .1
+// var SPHERE_ROTATION_SPEED = .1
 var PYRAMID_ROT_SPEED = 0.06
-var EMERALD_ROT_SPEED = 0.7
+// var EMERALD_ROT_SPEED = 0.7
+var SPHERE_ROTATION_SPEED = .0
+// var PYRAMID_ROT_SPEED = 0.00
+var EMERALD_ROT_SPEED = 0.0
 const CAMERA_SPEED = .1
 const CAMERA_ROT_SPEED = .1
 
@@ -884,7 +891,15 @@ function updateLight1Y(amount) {
     label = document.getElementById('light1Y')
     label.textContent = `Red Light Y: ${Number(amount).toFixed(2)}`
     g_lightPosition1[1] = Number(amount)
+    g_lightPosition1[0] = Number(2.5)
+    g_lightPosition1[2] = Number(2)
+
 }
+
+// g_lightPosition1 = [2.5, 0.75, 2]
+// g_lightPosition2 = [2.0, 0.75, 2.5]
+// g_lightPosition3 = [1.75, 0.75, 1.5]
+
 
 function buildTerrainColors(terrain, height) {
     var colors = [];

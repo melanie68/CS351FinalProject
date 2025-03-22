@@ -7,8 +7,6 @@ uniform mat4 u_World;
 uniform mat4 u_Camera;
 uniform mat4 u_Projection;
 
-uniform vec3 u_Light;
-
 varying vec2 v_TexCoord;
 varying vec3 v_Normal;
 
